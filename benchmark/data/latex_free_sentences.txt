@@ -1,0 +1,100 @@
+Effects of chronic administration of caffeine and stress on feeding behavior of rats
+Abstract Anorectic effects of caffeine are controversial in the literature, while stress and obesity are growing problems in our society.
+Since many stressed people are coffee drinkers, the objective of the present study was to evaluate the effect of stress and chronic administration of caffeine on feeding behavior and body weight in male and female rats.
+Wistar rats (both males and females) were divided into 3 groups: control (receiving water), caffeine 0.3 g/L and caffeine 1.0 g/L (in the drinking water).
+These groups were subdivided into non-stressed and stressed (repeated-restraint stress for 40 days).
+During the entire treatment, chow consumption was monitored and rats were weighed monthly.
+Afterwards, feeding behavior was evaluated during 3-min trials in food-deprived and ad libitum fed animals and also in repeated exposures, using palatable food (Froot Loops® and Cheetos®).
+Chronic administration of caffeine did not affect rat chow consumption or body weight gain, but diminished the consumption of both salty (Cheetos®) and sweet (Froot Loops®) palatable food.
+In the repeated trial tests, stress diminished savory snack consumption in the later exposures [I.S. Racotta, J. Leblanc, D. Richard The effect of caffeine on food intake in rats: involvement of corticotropin-releasing factor and the sympatho-adrenal system.
+Pharmacol Biochem Behav.
+1994, 48:887–892; S.D. Comer, M. Haney, R.W. Foltin, M.W. Fischman Effects of caffeine withdrawal on humans living in a residential laboratory.
+Exp Clin Psychopharmacol.
+1997, 5:399–403; A. Jessen, B. Buemann, S. Toubro, I.M. Skovgaard, A. Astrup The appetite-suppressant effect of nicotine is enhanced by caffeine.
+Diab Ob Metab.
+2005, 7:327–333; J.M. Carney Effects of caffeine, theophylline and theobromine on scheduled controlled responding in rats.
+Br J Pharmacol.
+1982, 75:451–454] and caffeine diminished consumption of both palatable foods (savory and sweet) during the early and later exposures.
+Most responses to caffeine were stronger in females, and stress exposure influenced the effect.
+Neither chronic caffeine nor stress affected adrenal weight and plasma corticosterone levels of the rats.
+These observations suggest that chronic caffeine consumption may have sex-specific effects on palatable food ingestion.
+Threshold values, stability analysis and high-q asymptotics for the coloring problem on random graphs
+We consider the problem of coloring Erdös-Rényi and regular random graphs of finite connectivity using q colors.
+It has been studied so far using the cavity approach within the so-called one-step replica symmetry breaking (1RSB) ansatz.
+We derive a general criterion for the validity of this ansatz and, applying it to the ground state, we provide evidence that the 1RSB solution gives exact threshold values c(q) for the transition from the colorable to the uncolorable phase with q colors.
+We also study the asymptotic thresholds for q>>1 finding c(q) =2q ln q-ln q-1+o (1) in perfect agreement with rigorous mathematical bounds, as well as the nature of excited states, and give a global phase diagram of the problem.
+Synthesis of macromolecules by Escherichia coli near the minimal temperature for growth.
+When a culture of Escherichia coli ML30 growing exponentially at 37 C in a glucose minimal medium was shifted abruptly to 10 C, growth decreased for about 4.5 hr.
+There was no net synthesis of deoxyribonucleic acid (DNA), ribonucleic acid (RNA), and protein.
+The cells, however, respired at a rate characteristic of cells growing in the steady state at 10 C and were able to accumulate alpha-methyl-d-glucoside.
+When growth recommenced at 10 C, protein synthesis started at 4 hr, RNA synthesis, with a burst at 6 hr, and DNA synthesis, with a burst at 7 hr.
+One synchronous division occurred at about 11 hr after shifting to 10 C. There was no alteration in the steady-state RNA to protein ratio.
+The results are discussed in relation to other reported effects of shifts in environmental conditions.
+The lag at 10 C was dependent on prior conditions of growth at 37 C. Growth at 37 C under conditions giving catabolite repression were necessary for the lag to be established on shifting to 10 C.
+Correlations in interacting systems with a network topology
+We study pair correlations in interacting systems placed on complex networks.
+In large networks of this kind, only pair correlations between the nearest neighbors are actually observable.
+We find the pair correlation function of the Ising model on a complex network.
+This exact result is confirmed by a phenomenological approach.
+Urothelial carcinoma in a pyelocaliceal diverticulum discovered by magnetic resonance urography
+Neither computed tomography (CT) nor intravenous pyelography (IVP) alone can diagnose tumors of renal pelvic diverticula, but magnetic resonance urography (MRU) can obtain accurate preoperative information.
+caSe
+Evolution of cis-regulatory elements in yeast de novo and duplicated new genes
+BackgroundNew genes that originate from non-coding DNA rather than being duplicated from parent genes are called de novo genes.
+Their short evolution time and lack of parent genes provide a chance to study the evolution of cis-regulatory elements in the initial stage of gene emergence.
+Although a few reports have discussed cis-regulatory elements in new genes, knowledge of the characteristics of these elements in de novo genes is lacking.
+Here, we conducted a comprehensive investigation to depict the emergence and establishment of cis-regulatory elements in de novo yeast genes.
+ResultsIn a genome-wide investigation, we found that the number of transcription factor binding sites (TFBSs) in de novo genes of S. cerevisiae increased rapidly and quickly became comparable to the number of TFBSs in established genes.
+This phenomenon might have resulted from certain characteristics of de novo genes; namely, a relatively frequent gain of TFBSs, an unexpectedly high number of preexisting TFBSs, or lower selection pressure in the promoter regions of the de novo genes.
+Furthermore, we identified differences in the promoter architecture between de novo genes and duplicated new genes, suggesting that distinct regulatory strategies might be employed by genes of different origin.
+Finally, our functional analyses of the yeast de novo genes revealed that they might be related to reproduction.
+ConclusionsOur observations showed that de novo genes and duplicated new genes possess mutually distinct regulatory characteristics, implying that these two types of genes might have different roles in evolution.
+Next-generation sequencing for virus detection: covering all the bases
+Background ::: The use of next-generation sequencing has become an established method for virus detection.
+Efficient study design for accurate detection relies on the optimal amount of data representing a significant portion of a virus genome.
+Interlaboratory Surveys of the Determination of Tumour Markers Scatter and Repeatability of the Results
+Data collected between 1983 and 1991 in interlaboratory surveys of the determination of tumour markers are used to show the magnitude of the scatter of results from different laboratories for the analysis of a single quantity in a given matrix.
+These data also show that the varying specificity of different reagent combinations appears to make a considerable contribution to this scatter, and that the used reagent combinations were not of uniform quality over a relatively extended period.
+The results for the following tumour markers were studied: alpha-fetoprotein (AFP), carcinoembryonic antigen (CEA), human chorionic gonadotropin (hCG), human chorionic gonadotropin+beta-subunit (hCG+beta-hCG), tissue polypeptide antigen (TPA), carbohydrate antigen 19-9 (CA 19-9), cancer antigen 15-3 (CA 15-3), cancer antigen 125 (CA 125), prostatic acid phosphatase (PAP) and prostate-specific antigen (PSA).
+Double coronary artery stent fracture with coronary artery microaneurysms.
+Even though drug-eluting stent (DES) implantation is an effective treatment for coronary artery stenosis, there are growing concerns related to the real usefulness of DESs due to their increased incidence of thrombosis, stent fracture, and late stent malapposition in comparison to bare metal stents.
+We have previously reported a case of stent fractures and multiple microaneurysms in both the left anterior descending and left circumflex coronary arteries.
+In the present case, we demonstrate the ability of dual-source spiral computed tomography to evaluate the various complications of DESs.
+IL-12 could induce monocytic tumor cells directional differentiation
+Interleukin-12 (IL-12), a member of interleukin family, plays a critical role in immune responses and anti-tumor activity.
+In this study, the effects of IL-12 on monocytic tumor cell lines differentiation to macrophagocyte and its likely mechanism was investigated.
+We examined the differentiation markers, morphological and functional changes, and possible mechanism in IL-12-treated THP-1 and U937 cells.
+It was found that IL-12 could up-regulated macrophage surface marker CD68 and CD11b expression in a time-dependent manner.
+Morphologically, after IL-12 treatment, THP-1 and U937 cells became round or irregular shape, even stretched many cell membrane protuberances; some cell nuclei became fuzzy or completely disappeared, and the chromatin appeared dense and cordlike.
+Furthermore, IL-12-induced monocytic tumor cell differentiation was accompanied by the growth arrest with G1-phase accumulation and S-phase reduction; apoptosis increased with anti-apoptosis protein Bcl-2 down-expression and pro-apoptosis protein Fas up-regulation, and enhanced phagocytosis function.
+The IL-12-induced macrophage differentiation of THP-1 and U937 cells was associated with the up-regulation of c-fms expression and the CSF-1R Tyr 809 site phosphorylation.
+These findings have revealed that IL-12 could induce monocytic tumor cells directional differentiation into macrophage-like cells, and its mechanism is possible connected with the up-regulation of c-fms expression and the phosphorylation of CSF-1R Tyr-809 site.
+The feasibility study and characterization of a two-dimensional diode array in “magic phantom” for high dose rate brachytherapy quality assurance
+PURPOSE ::: High dose rate (HDR) brachytherapy is a radiation treatment technique capable of delivering large dose rates to the tumor.
+Radiation is delivered using remote afterloaders to drive highly active sources (commonly (192)Ir with an air KERMA strength range between 20,000 and 40,000 U, where 1 U = 1 μGy m(2)/h in air) through applicators directly into the patient's prescribed region of treatment.
+Due to the obvious ramifications of incorrect treatment while using such an active source, it is essential that there are methods for quality assurance (QA) that can directly and accurately verify the treatment plan and the functionality of the remote afterloader.
+This paper describes the feasibility study of a QA system for HDR brachytherapy using a phantom based two-dimensional 11 × 11 epitaxial diode array, named "magic phantom." ::: ::: ::: METHODS ::: The HDR brachytherapy treatment plan is translated to the phantom with two rows of 10 (20 in total) HDR source flexible catheters, arranged above and below the diode array "magic plate" (MP).
+Four-dimensional source tracking in each catheter is based upon a developed fast iterative algorithm, utilizing the response of the diodes in close proximity to the (192)Ir source, sampled at 100 ms intervals by a fast data acquisition (DAQ) system.
+Using a (192)Ir source in a solid water phantom, the angular response of the developed epitaxial diodes utilized in the MP and also the variation of the MP response as a function of the source-to-detector distance (SDD) were investigated.
+These response data are then used by an iterative algorithm for source dwelling position determination.
+A measurement of the average transit speed between dwell positions was performed using the diodes and a fast DAQ. ::: ::: ::: RESULTS ::: The angular response of the epitaxial diode showed a variation of 15% within 360°, with two flat regions above and below the detector face with less than 5% variation.
+For SDD distances of between 5 and 30 mm the relative response of the epitaxial diodes used in the MP is in good agreement (within 8%) with radial dose function measurements found within the TG-43 protocol, with SDD of up to 70 mm showing a 40% over response.
+A method for four-dimensional localization of the HDR source was developed, allowing the source dwell position to be derived within 0.50 mm of the expected position.
+An estimation of the average transit speed for varying step sizes was determined and was found to increase from (12.8 ± 0.3) up to (38.6 ± 0.4) cm/s for a step size of 2.5 and 50 mm, respectively. ::: ::: ::: CONCLUSIONS ::: Our characterization of the designed QA "magic phantom" with MP in realistic HDR photon fields demonstrates the promising performance for real-time source position tracking in four dimensions and measurements of transit times.
+Further development of this system will allow a full suite for QA in HDR brachytherapy and analysis, and for future in vivo tracking.
+Influence of serum adiponectin level and SNP +45 polymorphism of adiponectin gene on myocardial fibrosis
+Adiponectin plays an important role in the development of hypertension, atherosclerosis, and cardiomyocyte hypertrophy, but very little was known about the influence of serum adiponectin or the adiponectin gene polymorphism on myocardial fibrosis.
+Our study investigates the influence of the SNP +45 polymorphism of the adiponectin gene and serum levels of adiponectin on myocardial fibrosis in patients with essential hypertension.
+A case-control study was conducted on 165 hypertensive patients and 126 normotensive healthy controls.
+The genotypes of adiponectin gene polymorphisms were detected by the polymerase chain reaction (PCR) method.
+Serum concentrations of procollagen were measured by a double antibody sandwich enzyme-linked immunosorbent assay (ELISA) in all subjects.
+The integrated backscatter score (IBS) was measured in the left ventricular myocardium using echocardiography.
+The serum levels of adiponectin in hypertensive patients were significantly lower than those in the normal control group ((2.69±1.0) μg/ml vs. (4.21±2.89) μg/ml, respectively, P<0.001).
+The serum levels of type-I procollagen carboxyl end peptide (PICP) and type-III procollagen ammonia cardinal extremity peptide (PIIINP) in the hypertension group were significantly higher than those in the control group.
+In the hypertension group, serum levels of adiponectin were significantly and negatively related to the average acoustic intensity and corrected acoustic intensity of the myocardium (r=0.46 and 0.61, respectively, P<0.05 for both).
+The serum levels of PICP and PIIINP were significantly different among the three genotypes of SNP +45 (P<0.01).
+Logistic regression analyses showed that sex and genotype (GG+GT) were the major risk factors of myocardial fibrosis in hypertensive patients (OR=5.343 and 3.278, respectively, P<0.05).
+These data suggest that lower levels of adiponectin and SNP +45 polymorphism of the adiponectin gene are likely to play an important role in myocardial fibrosis in hypertensive patients.
+Outer membrane protein sequence variation in lambs experimentally infected with Anaplasma phagocytophilum.
+Anaplasma phagocytophilum has long been known to cause tick-borne fever in ruminants and has been identified more recently as the causative agent of the emerging disease human granulocytic anaplasmosis.
+The related organism Anaplasma marginale uses gene conversion of the expression site for two major outer membrane proteins (OMPs) to generate extensive sequence and antigenic variation in these OMPs.

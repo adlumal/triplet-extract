@@ -1,0 +1,549 @@
+{
+  "verb_patterns": [
+    {
+      "test_name": "testBlueCatsPlayWithYarn",
+      "sentence": "blue cats play with yarn",
+      "expected_triples": [
+        {
+          "subject": "blue cats",
+          "relation": "play with",
+          "object": "yarn"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testBlueCatsPlayQuietlyWithYarn",
+      "sentence": "blue cats play quietly with yarn",
+      "expected_triples": [
+        {
+          "subject": "blue cats",
+          "relation": "play quietly with",
+          "object": "yarn"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testCatsHaveTails",
+      "sentence": "cats have tails",
+      "expected_triples": [
+        {
+          "subject": "cats",
+          "relation": "have",
+          "object": "tails"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testrabbitsEatVegetables",
+      "sentence": "rabbits eat vegetables",
+      "expected_triples": [
+        {
+          "subject": "rabbits",
+          "relation": "eat",
+          "object": "vegetables"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testFishLikeToSwim",
+      "sentence": "fish like to swim",
+      "expected_triples": [
+        {
+          "subject": "fish",
+          "relation": "like",
+          "object": "to swim"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testFishLikeToSwimAlternateParse",
+      "sentence": "fish like to swim",
+      "expected_triples": [
+        {
+          "subject": "fish",
+          "relation": "like to",
+          "object": "swim"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testMyCatsPlayWithYarn",
+      "sentence": "my cats play with yarn",
+      "expected_triples": [
+        {
+          "subject": "my cats",
+          "relation": "play with",
+          "object": "yarn"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testCatsAreCute",
+      "sentence": "cats are cute",
+      "expected_triples": [
+        {
+          "subject": "cats",
+          "relation": "are",
+          "object": "cute"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testIAmInFlorida",
+      "sentence": "I am in Florida",
+      "expected_triples": [
+        {
+          "subject": "I",
+          "relation": "am in",
+          "object": "Florida"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPropagateCSubj",
+      "sentence": "truffles picked are tasty",
+      "expected_triples": [
+        {
+          "subject": "truffles picked",
+          "relation": "are",
+          "object": "tasty"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testHeWasInaugurated",
+      "sentence": "he was inaugurated as president",
+      "expected_triples": [
+        {
+          "subject": "he",
+          "relation": "was inaugurated as",
+          "object": "president"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPPAttachment",
+      "sentence": "he served as president of Harvard Law Review",
+      "expected_triples": [
+        {
+          "subject": "he",
+          "relation": "served as",
+          "object": "president of Harvard Law Review"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPPAttachmentTwo",
+      "sentence": "he was community organizer in Chicago",
+      "expected_triples": [
+        {
+          "subject": "he",
+          "relation": "was",
+          "object": "community organizer in Chicago"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testXComp",
+      "sentence": "Obama was named 2009 Nobel Peace Prize Laureate",
+      "expected_triples": [
+        {
+          "subject": "Obama",
+          "relation": "was named",
+          "object": "2009 Nobel Peace Prize Laureate"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPassiveNSubj",
+      "sentence": "HRE was founded in 1991",
+      "expected_triples": [
+        {
+          "subject": "HRE",
+          "relation": "was founded in",
+          "object": "1991"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testReflexive",
+      "sentence": "Tom fighting Jerry",
+      "expected_triples": [
+        {
+          "subject": "Tom",
+          "relation": "fighting",
+          "object": "Jerry"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPassiveReflexive",
+      "sentence": "Tom fighting Jerry",
+      "expected_triples": [
+        {
+          "subject": "Tom",
+          "relation": "fighting",
+          "object": "Jerry"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testObjInRelation",
+      "sentence": "Scania-Vabis established production plant outside S\u00f6dert\u00e4lje",
+      "expected_triples": [
+        {
+          "subject": "Scania-Vabis",
+          "relation": "established production plant outside",
+          "object": "S\u00f6dert\u00e4lje"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testVBG",
+      "sentence": "foal be standing next to horse",
+      "expected_triples": [
+        {
+          "subject": "foal",
+          "relation": "be standing next to",
+          "object": "horse"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testVBGCollapsed",
+      "sentence": "foal be standing next to horse",
+      "expected_triples": [
+        {
+          "subject": "foal",
+          "relation": "be standing next to",
+          "object": "horse"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testThereAreIn",
+      "sentence": "dogs is in heaven",
+      "expected_triples": [
+        {
+          "subject": "dogs",
+          "relation": "is in",
+          "object": "heaven"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testThereAreWith",
+      "sentence": "cats is with tails",
+      "expected_triples": [
+        {
+          "subject": "cats",
+          "relation": "is with",
+          "object": "tails"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testThereAreVBing",
+      "sentence": "dogs sitting in heaven",
+      "expected_triples": [
+        {
+          "subject": "dogs",
+          "relation": "sitting in",
+          "object": "heaven"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testDogsInheaven",
+      "sentence": "dogs is in heaven",
+      "expected_triples": [
+        {
+          "subject": "dogs",
+          "relation": "is in",
+          "object": "heaven"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testAdvObject",
+      "sentence": "horses are grazing peacefully",
+      "expected_triples": [
+        {
+          "subject": "horses",
+          "relation": "are",
+          "object": "grazing peacefully"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testAdvObjectPassive",
+      "sentence": "things are arranged neatly",
+      "expected_triples": [
+        {
+          "subject": "things",
+          "relation": "are",
+          "object": "arranged neatly"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testObamaBornInRegression",
+      "sentence": "Obama Born in Honolulu Hawaii",
+      "expected_triples": [
+        {
+          "subject": "Obama",
+          "relation": "Born in",
+          "object": "Honolulu Hawaii"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testObamaPresidentOfRegression",
+      "sentence": "Obama is president of US",
+      "expected_triples": [
+        {
+          "subject": "Obama",
+          "relation": "is president of",
+          "object": "US"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testObamaPresidentOfRegressionFull",
+      "sentence": "Obama is 44th and current president of US",
+      "expected_triples": [
+        {
+          "subject": "Obama",
+          "relation": "is 44th and current president of",
+          "object": "US"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testGeorgeBoydRegression",
+      "sentence": "George Boyd has joined Nottingham Forest",
+      "expected_triples": [
+        {
+          "subject": "George Boyd",
+          "relation": "has joined",
+          "object": "Nottingham Forest"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testUSPresidentObama1",
+      "sentence": "Barack Obama is president of United States",
+      "expected_triples": [
+        {
+          "subject": "Barack Obama",
+          "relation": "is president of",
+          "object": "United States"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testUSPresidentObama2",
+      "sentence": "Barack Obama is president of United States",
+      "expected_triples": [
+        {
+          "subject": "Barack Obama",
+          "relation": "is president of",
+          "object": "United States"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testUSAllyBritain",
+      "sentence": "Britain is ally of United States",
+      "expected_triples": [
+        {
+          "subject": "Britain",
+          "relation": "is ally of",
+          "object": "United States"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPresidentObama",
+      "sentence": "Obama is President",
+      "expected_triples": [
+        {
+          "subject": "Obama",
+          "relation": "is",
+          "object": "President"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testChrisManningOfStanford",
+      "sentence": "Chris Manning is of Stanford",
+      "expected_triples": [
+        {
+          "subject": "Chris Manning",
+          "relation": "is of",
+          "object": "Stanford"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testChrisIsOfStanford",
+      "sentence": "Chris Manning is of Stanford",
+      "expected_triples": [
+        {
+          "subject": "Chris Manning",
+          "relation": "is of",
+          "object": "Stanford"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testPPExtraction",
+      "sentence": "Obama is in Tucson",
+      "expected_triples": [
+        {
+          "subject": "Obama",
+          "relation": "is in",
+          "object": "Tucson"
+        }
+      ],
+      "category": "verb"
+    }
+  ],
+  "nominal_patterns": [
+    {
+      "test_name": "testPossessive",
+      "sentence": "Unicredit has Bank Austria Creditanstalt",
+      "expected_triples": [
+        {
+          "subject": "Unicredit",
+          "relation": "has",
+          "object": "Bank Austria Creditanstalt"
+        }
+      ],
+      "category": "nominal"
+    },
+    {
+      "test_name": "testPossessiveNoNER",
+      "sentence": "IBM has research group",
+      "expected_triples": [
+        {
+          "subject": "IBM",
+          "relation": "has",
+          "object": "research group"
+        }
+      ],
+      "category": "nominal"
+    },
+    {
+      "test_name": "testPossessiveWithObject",
+      "sentence": "Tim 's father is Tom",
+      "expected_triples": [
+        {
+          "subject": "Tim",
+          "relation": "'s father is",
+          "object": "Tom"
+        }
+      ],
+      "category": "nominal"
+    },
+    {
+      "test_name": "testApposInObject",
+      "sentence": "Newspaper published in Arizona",
+      "expected_triples": [
+        {
+          "subject": "Newspaper",
+          "relation": "published in",
+          "object": "Arizona"
+        }
+      ],
+      "category": "nominal"
+    },
+    {
+      "test_name": "testApposAsSubj",
+      "sentence": "Durin son of Thorin",
+      "expected_triples": [
+        {
+          "subject": "Durin",
+          "relation": "son of",
+          "object": "Thorin"
+        }
+      ],
+      "category": "nominal"
+    },
+    {
+      "test_name": "testPossessiveInEntity",
+      "sentence": "Scania-Vabis established its first production plant",
+      "expected_triples": [
+        {
+          "subject": "Scania-Vabis",
+          "relation": "established",
+          "object": "its first production plant"
+        }
+      ],
+      "category": "nominal"
+    }
+  ],
+  "negative_tests": [
+    {
+      "test_name": "testWh",
+      "sentence": null,
+      "expected_triples": [],
+      "category": "negative"
+    },
+    {
+      "test_name": "testOfWhich",
+      "sentence": "Bono is co-founder of which",
+      "expected_triples": [
+        {
+          "subject": "Bono",
+          "relation": "is co-founder of",
+          "object": "which"
+        }
+      ],
+      "category": "negative"
+    },
+    {
+      "test_name": "testCommaDoesntOvergenerate",
+      "sentence": null,
+      "expected_triples": [],
+      "category": "negative"
+    }
+  ],
+  "edge_cases": []
+}

@@ -37,7 +37,7 @@ This is a GPU-accelerated Python port of Stanford OpenIE that extends the origin
 
 To our knowledge, this is the first open-source system that GPU-accelerates the natural-logic forward-entailment search itself — via batched reparsing over dependency parses — rather than replacing the natural-logic OpenIE pipeline with a neural model trained on its outputs.
 
-Prior neural OpenIE models typically train on triples produced by classical OpenIE systems, using GPUs for neural inference over those labels. In contrast, this system keeps the original natural-logic semantics and uses the GPU to accelerate the BFS exploration through batch processing, effectively GPU-accelerating the underlying OpenIE algorithm rather than approximating it with a neural model.
+Prior neural OpenIE models typically train on triplets produced by classical OpenIE systems, using GPUs for neural inference over those labels. In contrast, this system keeps the original natural-logic semantics and uses the GPU to accelerate the BFS exploration through batch processing, effectively GPU-accelerating the underlying OpenIE algorithm rather than approximating it with a neural model.
 
 This port uses spaCy for dependency parsing instead of Stanford CoreNLP, providing a pure Python alternative that works without Java dependencies. I'm grateful to the Stanford NLP Group for their groundbreaking research and for making their models available.
 
@@ -45,7 +45,7 @@ This port uses spaCy for dependency parsing instead of Stanford CoreNLP, providi
 
 ## Design Philosophy
 
-This implementation prioritizes preserving rich semantic context in extracted triples. Unlike some ports that simplify subjects and relations, this port retains qualifiers, quantifiers, and contextual information (e.g., "The U.S. president Barack Obama" rather than just "Barack Obama", or "25% of people" rather than just "people"). This makes the output particularly well-suited for knowledge graph construction, GraphRAG applications, and other systems that benefit from semantically rich representations.
+This implementation prioritizes preserving rich semantic context in extracted triplets. Unlike some ports that simplify subjects and relations, this port retains qualifiers, quantifiers, and contextual information (e.g., "The U.S. president Barack Obama" rather than just "Barack Obama", or "25% of people" rather than just "people"). This makes the output particularly well-suited for knowledge graph construction, GraphRAG applications, and other systems that benefit from semantically rich representations.
 
 ## Installation
 
@@ -309,7 +309,7 @@ Uses a pre-trained linear classifier to break complex sentences into independent
 Applies natural logic deletion rules to generate shorter entailed forms. Uses prepositional phrase attachment affinities to determine which constituents can be safely deleted while preserving truth.
 
 **Stage 3: Pattern Matching**
-Extracts (subject, relation, object) triples from sentence fragments using dependency patterns. Handles various syntactic constructions including copular sentences, prepositional phrases, and clausal complements.
+Extracts (subject, relation, object) triplets from sentence fragments using dependency patterns. Handles various syntactic constructions including copular sentences, prepositional phrases, and clausal complements.
 
 The trained models (clause splitting classifier and PP attachment affinities) are from the original Stanford implementation and are included in this package.
 

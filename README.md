@@ -241,6 +241,60 @@ extractor = OpenIEExtractor(
 )
 ```
 
+### Attribution Metadata: Asserter Chains
+
+Content embedded under attitude/speech verbs is reported, not asserted by
+the document author — "Tom said Sarah claimed the food was cold" does not
+assert that the food was cold. Each triplet carries an `asserter_chain`
+recording who asserts it, outermost asserter first; `None` means the
+author asserts it directly. The detection reuses Stanford OpenIE's own
+indirect-speech machinery (the same structure its clause splitter uses to
+refuse splitting reported clauses).
+
+```python
+from triplet_extract import extract
+
+for t in extract("Tom said Sarah claimed the chef burned the pasta."):
+    print(f"({t.subject}, {t.relation}, {t.object})  asserted by: {t.asserter_chain}")
+```
+
+Output:
+```
+(Tom, said, Sarah claimed the chef burned the pasta)  asserted by: None
+(Sarah, claimed, the chef burned the pasta)  asserted by: ['Tom']
+(the chef, burned, the pasta)  asserted by: ['Tom', 'Sarah']
+...
+```
+
+This is metadata only: rendered subject/relation/object strings are
+unchanged. Useful for knowledge graphs that track provenance, source
+reliability, and testimony.
+
+### Pronoun Resolution (Opt-In)
+
+`resolve_coref=True` substitutes third-person pronouns with their
+antecedents before extraction, using a port of the pronoun sieve from
+Stanford's deterministic coreference system (Lee et al., 2011) with one
+deliberate change: a pronoun is substituted ONLY when exactly one
+agreeing PERSON antecedent exists within the sieve's sentence window —
+otherwise it abstains and leaves the pronoun untouched. A wrong
+substitution poisons downstream facts; an unresolved pronoun is honest.
+
+```python
+extractor = OpenIEExtractor(resolve_coref=True)
+triplets = extractor.extract_triplet_objects(
+    "Obama is the president. Everyone says he has a nice smile."
+)
+# (Obama, has, a nice smile) — instead of (he, has, a nice smile)
+```
+
+Ambiguous cases abstain by design: with "Tom met Sarah at the cafe. She
+ordered coffee.", the pronoun stays "She" (two candidate persons, and no
+word lists are used to guess gender for names). Winograd-style pronouns
+("it" with world-knowledge ambiguity) are out of scope and never
+substituted. Default is OFF because substitution changes rendered
+triplet strings.
+
 ### Batch Processing
 
 For processing multiple texts efficiently:

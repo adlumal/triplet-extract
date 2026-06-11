@@ -16,7 +16,7 @@ Original work: Stanford OpenIE, Copyright (C) 2015 Stanford University (GPL-3.0)
 
 from .extractor import OpenIEExtractor, Triplet
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Adrian Lucas Malec"
 __license__ = "GPL-3.0"
 

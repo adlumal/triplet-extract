@@ -52,6 +52,13 @@ class Triplet:
     from_entailment: bool = False
     entailment_score: float = 1.0
 
+    # Attribution metadata: who asserts this triplet. None = asserted
+    # directly by the document author. For content embedded under
+    # attitude/speech verbs ("Tom said Sarah claimed the food was cold"),
+    # lists the asserters outermost-first (["Tom", "Sarah"] for the
+    # innermost clause). Metadata only — rendered strings are unaffected.
+    asserter_chain: list[str] | None = None
+
     def __str__(self):
         return f"({self.subject}, {self.relation}, {self.object})"
 
@@ -64,6 +71,7 @@ class Triplet:
             "from_clause_split": self.from_clause_split,
             "from_entailment": self.from_entailment,
             "entailment_score": self.entailment_score,
+            "asserter_chain": self.asserter_chain,
         }
 
 
@@ -95,6 +103,7 @@ class OpenIEExtractor:
         deep_search: bool = False,  # Default: CPU-optimized Balanced mode
         gpu_batch_size: int | None = None,
         use_gpu: bool | None = None,  # Deprecated, use deep_search
+        resolve_coref: bool = False,
     ):
         """
         Initialize the full OpenIE extractor.
@@ -117,6 +126,11 @@ class OpenIEExtractor:
                 - For GPU acceleration: pip install triplet-extract[deepsearch]
             gpu_batch_size: GPU batch size (auto-detected if None, recommended: 8GB=32, 16GB=64, 24GB=128, 32GB+=256)
             use_gpu: DEPRECATED - use deep_search instead
+            resolve_coref: Substitute pronouns with their antecedents BEFORE
+                extraction, but only when a unique agreeing antecedent exists
+                in scope (otherwise the pronoun is left untouched). Changes
+                rendered triplet strings, so it is opt-in (default: False).
+                See triplet_extract.coref for the gating rules.
         """
         # Initialize spaCy parser
         if nlp is None:
@@ -159,6 +173,7 @@ class OpenIEExtractor:
         self.speed_preset = speed_preset
         self.preserve_latex = preserve_latex
         self.deep_search = deep_search
+        self.resolve_coref = resolve_coref
 
         # Initialize LaTeX preprocessor if needed
         if self.preserve_latex:
@@ -245,6 +260,15 @@ class OpenIEExtractor:
         """Internal implementation that returns Triplet objects."""
         # Parse with Spacy
         doc = self.nlp(text)
+
+        # Optional gated pronoun resolution (document-level, so antecedents
+        # in earlier sentences are visible to later ones)
+        if self.resolve_coref:
+            from .coref import resolve_unique_pronouns
+
+            resolved_text = resolve_unique_pronouns(doc)
+            if resolved_text is not None:
+                doc = self.nlp(resolved_text)
 
         # Split into sentences and process each separately
         # This matches Stanford OpenIE behavior and prevents compound detection
@@ -410,6 +434,7 @@ class OpenIEExtractor:
                             from_clause_split=frag_info["from_clause_split"],
                             from_entailment=frag_info["from_entailment"],
                             entailment_score=frag_info["score"],
+                            asserter_chain=triple.asserter_chain,
                         )
 
                         all_triplets.append(triplet)
@@ -497,6 +522,14 @@ class OpenIEExtractor:
             iterator = tqdm(iterator, total=len(texts), desc="Extracting triplets")
 
         for _text, doc, latex_map in iterator:
+            # Optional gated pronoun resolution (document-level)
+            if self.resolve_coref:
+                from .coref import resolve_unique_pronouns
+
+                resolved_text = resolve_unique_pronouns(doc)
+                if resolved_text is not None:
+                    doc = self.nlp(resolved_text)
+
             # Process each sentence in the doc
             sentences = list(doc.sents)
             all_triplets = []
@@ -616,6 +649,7 @@ class OpenIEExtractor:
                                 from_clause_split=frag_info["from_clause_split"],
                                 from_entailment=frag_info["from_entailment"],
                                 entailment_score=frag_info["score"],
+                                asserter_chain=triple.asserter_chain,
                             )
                             all_triplets.append(triplet)
                     except Exception as e:

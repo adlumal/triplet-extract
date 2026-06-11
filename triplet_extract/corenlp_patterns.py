@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import spacy
 from spacy.tokens import Doc, Token
 
+from .openie.clause_search_state import INDIRECT_SPEECH_LEMMAS
 from .openie.text_utils import reconstruct_text, reconstruct_text_from_strings
 
 
@@ -29,11 +30,24 @@ class Triple:
     object_tokens: list[Token] = None
     relation_head: Token | None = None  # Head verb/predicate of relation
 
+    # Attribution metadata: who asserts this triple, per the dependency
+    # structure. None = asserted directly by the document/sentence author.
+    # For content embedded under attitude/speech verbs ("Tom said Sarah
+    # claimed the food was cold"), the chain lists the asserters from the
+    # outermost inward (["Tom", "Sarah"] for the innermost clause).
+    # Metadata only: rendered subject/relation/object strings are unaffected.
+    asserter_chain: list[str] | None = None
+
     def to_tuple(self) -> tuple[str, str, str]:
         return (self.subject, self.relation, self.object)
 
     def to_dict(self) -> dict:
-        return {"subject": self.subject, "relation": self.relation, "object": self.object}
+        return {
+            "subject": self.subject,
+            "relation": self.relation,
+            "object": self.object,
+            "asserter_chain": self.asserter_chain,
+        }
 
 
 class CoreNLPStyleExtractor:
@@ -99,6 +113,13 @@ class CoreNLPStyleExtractor:
         triples.extend(self._pattern_ccomp(doc))  # Pattern 5: ccomp
         triples.extend(self._pattern_prepositional(doc))  # Pattern 4: prepositional
         triples.extend(self._pattern_acl(doc))  # Pattern 7: ACL (participial phrases)
+
+        # Attribution pass: record the asserter chain for triples whose
+        # predicate sits inside reported/attributed content. Metadata only —
+        # rendered triplet strings are never affected.
+        for triple in triples:
+            if triple.relation_head is not None:
+                triple.asserter_chain = self._asserter_chain(triple.relation_head)
 
         return triples
 
@@ -1143,6 +1164,78 @@ class CoreNLPStyleExtractor:
     # ==================================================================
     # Helper Methods
     # ==================================================================
+
+    def _asserter_chain(self, relation_head: Token) -> list[str] | None:
+        """
+        Compute the asserter chain for a triple's predicate.
+
+        Reported/attributed content is not asserted by the document author:
+        in "Tom said Sarah claimed the food was cold", the claim about the
+        food is Sarah's (as reported by Tom), not the author's. The clause
+        splitter already detects exactly this structure to refuse splitting
+        (see should_skip_indirect_speech, ported from
+        ClauseSplitterSearchProblem.java:857-864, with Stanford's
+        INDIRECT_SPEECH_LEMMAS from ClauseSplitterSearchProblem.java:100-102);
+        here the same detection is used to RECORD the attribution instead.
+
+        Walks from the relation head up to the sentence root; each time a
+        ccomp/xcomp edge governed by an attitude/speech verb is crossed,
+        the governor's resolved subject is recorded. Returns the chain
+        ordered outermost-first (["Tom", "Sarah"] for the innermost clause
+        above), or None for directly asserted content.
+
+        Args:
+            relation_head: Head token of the triple's relation
+
+        Returns:
+            List of asserter texts (outermost first), or None
+        """
+        chain = []
+        token = relation_head
+        seen = set()  # guard against malformed head chains in rebuilt docs
+        while token.head.i != token.i and token.i not in seen:
+            seen.add(token.i)
+            if token.dep_ in ("ccomp", "xcomp"):
+                governor = token.head
+                governor_lemma = governor.lemma_.lower() if governor.lemma_ else ""
+                if (
+                    governor_lemma in INDIRECT_SPEECH_LEMMAS
+                    or governor.text.lower() in INDIRECT_SPEECH_LEMMAS
+                ):
+                    subject = self._resolve_clause_subject(governor)
+                    if subject is not None:
+                        chain.append(self._get_subtree_text(subject))
+            token = token.head
+
+        chain.reverse()
+        return chain or None
+
+    def _resolve_clause_subject(self, verb: Token) -> Token | None:
+        """
+        Resolve the subject of a clause's verb, walking conj chains.
+
+        Conjoined verbs share the first conjunct's subject ("Sarah loved
+        them and said ...": "said" has no nsubj of its own; "loved" holds
+        it), so when the verb has no subject, follow conj edges upward.
+
+        Args:
+            verb: The verb whose subject to resolve
+
+        Returns:
+            The subject token, or None if no subject is found
+        """
+        node = verb
+        seen = set()  # guard against malformed head chains in rebuilt docs
+        while node is not None and node.i not in seen:
+            seen.add(node.i)
+            subject = next((c for c in node.children if c.dep_ in ("nsubj", "nsubjpass")), None)
+            if subject is not None:
+                return subject
+            if node.dep_ == "conj" and node.head.i != node.i:
+                node = node.head
+            else:
+                return None
+        return None
 
     def _build_relation_tokens(self, verb: Token) -> tuple[list[Token], Token]:
         """

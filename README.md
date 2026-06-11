@@ -317,10 +317,24 @@ Installing the `coref` extra adds a small CPU sentence-embedding model
 (`BAAI/bge-small-en`) that supplies a name-gender signal; a confident
 name/pronoun conflict then vetoes the resolution (He stays unresolved),
 while genuinely unisex names abstain and fall back to the uniqueness gate.
-The model is lazy-loaded only when a gender decision is needed.
 
 ```bash
 pip install triplet-extract[coref]
+```
+
+The cost is modest: the model is lazy-loaded only when a gender decision
+is needed (one ~2.6s load), and each distinct name is encoded once and
+cached, so the per-document overhead is negligible next to the coreference
+re-parse itself. The prior is auto-enabled when the extra is installed;
+`coref_gender_prior=False` disables it, and an application that already
+runs a sentence-embedding model can avoid a second copy by sharing it:
+
+```python
+from triplet_extract import OpenIEExtractor
+from triplet_extract.gender import NameGenderPrior
+
+prior = NameGenderPrior(encoder=lambda strs: my_model.encode(strs, normalize_embeddings=True))
+extractor = OpenIEExtractor(resolve_coref=True, coref_gender_prior=prior)
 ```
 
 ### Source-Identity Clustering (Opt-In)

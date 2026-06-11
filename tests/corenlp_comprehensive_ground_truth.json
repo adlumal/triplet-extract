@@ -443,6 +443,30 @@
         }
       ],
       "category": "verb"
+    },
+    {
+      "test_name": "testCheetahRunsFasterThanDog",
+      "sentence": "a cheetah runs faster than a dog",
+      "expected_triples": [
+        {
+          "subject": "a cheetah",
+          "relation": "runs faster than",
+          "object": "a dog"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testCheetahsRunFasterThanDogs",
+      "sentence": "cheetahs run faster than dogs",
+      "expected_triples": [
+        {
+          "subject": "cheetahs",
+          "relation": "run faster than",
+          "object": "dogs"
+        }
+      ],
+      "category": "verb"
     }
   ],
   "nominal_patterns": [

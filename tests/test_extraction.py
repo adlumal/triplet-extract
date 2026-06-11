@@ -85,3 +85,49 @@ def test_scientific_text():
         assert len(t.subject.strip()) > 0
         assert len(t.relation.strip()) > 0
         assert len(t.object.strip()) > 0
+
+
+def test_verb_advmod_prep_comparative():
+    """Pattern 4b: verb + adverb comparatives where spaCy hangs the PP off the adverb.
+
+    "runs faster than a dog" parses as than <- faster(advmod) <- runs, so the
+    plain prepositional pattern (prep as direct child of the verb) never fired
+    and these sentences extracted nothing.
+    """
+    cases = [
+        ("A cheetah runs faster than a dog.", "cheetah", "runs faster than", "dog"),
+        ("Cheetahs run faster than dogs.", "Cheetahs", "run faster than", "dogs"),
+    ]
+    for text, subj, relation, obj in cases:
+        triplets = extract(text)
+        found = [(t.subject, t.relation, t.object) for t in triplets]
+        assert any(
+            subj in s and r == relation and obj in o for s, r, o in found
+        ), f"Expected ({subj}, {relation}, {obj}) for {text!r}, got {found}"
+
+
+def test_verb_advmod_prep_yields_triplet_set():
+    """The pipeline emits a set of renderings: the full extraction plus
+    entailment-shortened variants, mirroring the copula comparative path."""
+    triplets = extract("A cheetah runs faster than a dog.")
+    rendered = {(t.subject, t.relation, t.object) for t in triplets}
+
+    # Full rendering from the original sentence
+    assert ("A cheetah", "runs faster than", "a dog") in rendered
+    # Entailment-shortened rendering (determiners dropped)
+    assert ("cheetah", "runs faster than", "dog") in rendered
+
+
+def test_copula_comparative_still_extracts():
+    """Copular comparatives keep extracting via the acomp path (Pattern 2)."""
+    triplets = extract("A cheetah is faster than a dog.")
+    rendered = {(t.subject, t.relation, t.object) for t in triplets}
+    assert ("A cheetah", "is", "faster than a dog") in rendered
+    assert ("cheetah", "is", "faster than dog") in rendered
+
+
+def test_bare_verb_advmod_extracts_nothing():
+    """Bare verb + adverb with no PP has no object to extract; Java OpenIE
+    produces no triple here either, so neither do we."""
+    triplets = extract("A cheetah runs fast.")
+    assert triplets == []

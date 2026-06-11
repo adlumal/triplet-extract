@@ -980,6 +980,13 @@ class CoreNLPStyleExtractor:
     # {$}=verb >/.subj/ {}=subject >/(nmod|obl):.*/=prepEdge {}=object
     #
     # Matches: "cats play with yarn"
+    #
+    # Pattern 4b (same Semgrex line): for verb+adverb comparatives
+    # ("runs faster than a dog") UD attaches obl:than to the verb, so the
+    # Java pattern matches — but spaCy hangs the PP off the verb's ADVMOD
+    # instead (than <- faster <- runs). Accept prep-on-advmod for VERB
+    # heads so the same clauses extract, mirroring Pattern 2b's
+    # advmod-with-prep handling.
     # ==================================================================
 
     def _pattern_prepositional(self, doc: Doc) -> list[Triple]:
@@ -994,6 +1001,14 @@ class CoreNLPStyleExtractor:
         - Prep has pobj child (prepositional object)
 
         Example: "cats play with yarn" -> (cats, play with, yarn)
+
+        Pattern 4b: spaCy attaches the PP of a verb+adverb comparative to
+        the adverb rather than the verb (UD attaches obl:than to the verb,
+        which is what the Java pattern matches), so also accept a prep
+        hanging off an advmod child of a VERB head.
+
+        Example: "a cheetah runs faster than a dog"
+        -> (a cheetah, runs faster than, a dog)
         """
         triples = []
 
@@ -1012,44 +1027,53 @@ class CoreNLPStyleExtractor:
             if subject is None:
                 continue
 
-            # Find prepositional phrases
-            for child in token.children:
-                if child.dep_ == "prep":
-                    prep = child
+            # Find prepositional phrases attached directly to the verb
+            preps = [child for child in token.children if child.dep_ == "prep"]
 
-                    # Find prepositional object
-                    pobj = None
-                    for prep_child in prep.children:
-                        if prep_child.dep_ == "pobj":
-                            pobj = prep_child
-                            break
+            # Pattern 4b: preps hanging off an advmod of the verb
+            # ("runs faster than a dog": than <- faster <- runs).
+            # VERB heads only — AUX heads keep their direct-prep behavior.
+            if token.pos_.startswith("VERB"):
+                for advmod in token.children:
+                    if advmod.dep_ == "advmod":
+                        preps.extend(c for c in advmod.children if c.dep_ == "prep")
 
-                    if pobj is None:
-                        continue
+            for prep in preps:
+                # Find prepositional object
+                pobj = None
+                for prep_child in prep.children:
+                    if prep_child.dep_ == "pobj":
+                        pobj = prep_child
+                        break
 
-                    # Extract spans
-                    subj_text = self._get_subtree_text(subject)
-                    pobj_text = self._get_subtree_text(pobj)
+                if pobj is None:
+                    continue
 
-                    # Build relation: verb + preposition
-                    base_relation = self._build_relation(token)
-                    relation_text = f"{base_relation} {prep.text}"
+                # Extract spans
+                subj_text = self._get_subtree_text(subject)
+                pobj_text = self._get_subtree_text(pobj)
 
-                    # Extract tokens for auxiliary filtering
-                    subj_tokens = self._get_subtree_tokens(subject)
-                    rel_tokens, rel_head = self._build_relation_tokens(token)
-                    obj_tokens = self._get_subtree_tokens(pobj)
+                # Build relation: verb + preposition
+                # (advmods are already included by _build_relation, so the
+                # Pattern 4b case yields e.g. "runs faster" + "than")
+                base_relation = self._build_relation(token)
+                relation_text = f"{base_relation} {prep.text}"
 
-                    triple = Triple(
-                        subject=subj_text,
-                        relation=relation_text,
-                        object=pobj_text,
-                        subject_tokens=subj_tokens,
-                        relation_tokens=rel_tokens,
-                        object_tokens=obj_tokens,
-                        relation_head=rel_head,
-                    )
-                    triples.append(triple)
+                # Extract tokens for auxiliary filtering
+                subj_tokens = self._get_subtree_tokens(subject)
+                rel_tokens, rel_head = self._build_relation_tokens(token)
+                obj_tokens = self._get_subtree_tokens(pobj)
+
+                triple = Triple(
+                    subject=subj_text,
+                    relation=relation_text,
+                    object=pobj_text,
+                    subject_tokens=subj_tokens,
+                    relation_tokens=rel_tokens,
+                    object_tokens=obj_tokens,
+                    relation_head=rel_head,
+                )
+                triples.append(triple)
 
         return triples
 

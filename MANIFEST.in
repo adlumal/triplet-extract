@@ -1,3 +1,3 @@
 include LICENSE
 include README.md
-recursive-include pytriplets/models *.gz *.pkl *.json
+recursive-include triplet_extract/models *.gz *.pkl *.json

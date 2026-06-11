@@ -546,14 +546,33 @@ class CoreNLPStyleExtractor:
             if subject is None:
                 continue
 
+            # Negation on the verb (or, rarely, on the auxiliary) must be
+            # carried into the relation: emitting (Tom | did | say) from
+            # "Tom did not say." inverts polarity. Stanford refuses to emit
+            # rather than strip — RelationTripleSegmenter.java eliminates
+            # extractions whose chunks carry an unhandled "not"
+            # (segmentVerb "prohibit 'not'" adverb check; getValidChunk
+            # rejects unexpected arcs; class javadoc: "the system has not
+            # been written to handle negation"). This port's relation
+            # convention is richer (aux + negation + verb, see
+            # _build_relation), so these branches carry the negation.
+            negs = sorted(
+                [c for c in token.children if c.dep_ == "neg"]
+                + [c for c in aux.children if c.dep_ == "neg"],
+                key=lambda t: t.i,
+            )
+
             # Check for oprd (object predicate) - used in passive constructions
             oprd = next((c for c in token.children if c.dep_ == "oprd"), None)
             if oprd:
                 # Case: "Obama was named 2009 Nobel Peace Prize Laureate"
-                # Relation: auxpass + verb = "was named"
+                # Relation: auxpass + (negation) + verb = "was (not) named"
                 # Object: oprd subtree = "2009 Nobel Peace Prize Laureate"
                 subj_text = self._get_subtree_text(subject)
-                relation_text = f"{aux.text} {token.text}"
+                if negs:
+                    relation_text = reconstruct_text(sorted([aux, token, *negs], key=lambda t: t.i))
+                else:
+                    relation_text = f"{aux.text} {token.text}"
                 obj_text = self._get_subtree_text(oprd)
 
                 # Extract tokens for auxiliary filtering
@@ -602,7 +621,12 @@ class CoreNLPStyleExtractor:
                 advmod, prep = advmod_with_prep
                 pobj = next((c for c in prep.children if c.dep_ == "pobj"), None)
                 if pobj:
-                    relation_text = f"{aux.text} {token.text} {advmod.text} {prep.text}"
+                    if negs:
+                        relation_text = reconstruct_text(
+                            sorted([aux, token, advmod, prep, *negs], key=lambda t: t.i)
+                        )
+                    else:
+                        relation_text = f"{aux.text} {token.text} {advmod.text} {prep.text}"
                     obj_text = self._get_subtree_text(pobj)
 
                     # Extract tokens for auxiliary filtering
@@ -622,7 +646,7 @@ class CoreNLPStyleExtractor:
                     triples.append(triple)
             else:
                 # Case: "horses are grazing peacefully" (intransitive)
-                # Relation: just auxiliary
+                # Relation: auxiliary + (negation)
                 # Object: verb + advmods
                 obj_parts = [token.text]
                 for child in token.children:
@@ -630,12 +654,23 @@ class CoreNLPStyleExtractor:
                         obj_parts.append(child.text)
                 obj_text = reconstruct_text_from_strings(obj_parts)
 
-                # Relation is just the auxiliary (is/are)
-                relation_text = aux.text
+                # Relation is the auxiliary (is/are) plus any negation:
+                # "Horses are not grazing" must not render (Horses | are |
+                # grazing)
+                if negs:
+                    rel_tokens = sorted([aux, *negs], key=lambda t: t.i)
+                    relation_text = reconstruct_text(rel_tokens)
+                else:
+                    rel_tokens = [aux]
+                    relation_text = aux.text
 
-                # Extract tokens for auxiliary filtering
+                # Extract tokens for auxiliary filtering. relation_tokens
+                # mirror the emitted relation exactly — the aux filter
+                # classifies aux-only triples by these tokens, and a list
+                # that smuggles in the main verb (as _build_relation_tokens
+                # would) makes the artifact invisible to it.
                 subj_tokens = self._get_subtree_tokens(subject)
-                rel_tokens, rel_head = self._build_relation_tokens(token)
+                rel_head = aux
                 # Object tokens include the main verb and its advmods
                 obj_tokens = [token]
                 for child in token.children:

@@ -7,9 +7,11 @@ For example, from "25% of people don't know what GraphRAG is":
   - REMOVE: "25% of people -> do -> know" (auxiliary artifact)
   - KEEP: "25% of people -> do know not -> what GraphRAG is" (real semantic content)
 
-This implements a two-layer filter:
-1. Mark triples whose relation is purely auxiliary support
-2. Remove aux-only triples dominated by richer triples with the same subject
+This implements a three-layer filter:
+1. Unconditionally drop triples that silently invert polarity (a parse-level
+   negation absent from the rendered text)
+2. Mark triples whose relation is purely auxiliary support
+3. Remove aux-only triples dominated by richer triples with the same subject
 
 Reference: Based on community best practices for OpenIE post-processing
 """
@@ -29,6 +31,44 @@ AUX_LEMMAS = {
     "should",
     "must",
 }
+
+
+def drops_parse_negation(triple) -> bool:
+    """
+    True when the parse negates a verb inside this triple but the triple's
+    rendered text does not express that negation.
+
+    Such a triple asserts the opposite of its source — "Tom did not say."
+    rendered as (Tom | did | say) — which is the worst corruption an
+    extraction can emit. Stanford's segmenter eliminates extractions whose
+    chunks carry an unhandled "not" rather than emit them with the negation
+    stripped (RelationTripleSegmenter.java: segmentVerb's "prohibit 'not'"
+    adverb check, getValidChunk's rejection of unexpected arcs, and the
+    segment() javadoc: "the system has not been written to handle
+    negation"). This guard applies the same eliminate-don't-corrupt policy
+    as a backstop against any pattern that builds its relation text without
+    consulting `neg`.
+
+    The check is surface-textual on purpose: what downstream consumers read
+    is the rendered text, and contractions reconstruct to forms that contain
+    the negation token's surface form ("wo" + "n't" -> "won't").
+
+    Args:
+        triple: Triple object with token-level information
+
+    Returns:
+        True if the triple silently drops a parse-level negation
+    """
+    tokens = list(triple.relation_tokens or []) + list(triple.object_tokens or [])
+    if not tokens:
+        return False
+
+    negs = [child for t in tokens for child in t.children if child.dep_ == "neg"]
+    if not negs:
+        return False
+
+    expressed = f"{triple.relation} {triple.object}".lower()
+    return any(neg.text.lower() not in expressed for neg in negs)
 
 
 def is_aux_only_triple(triple) -> bool:
@@ -105,8 +145,17 @@ def suppress_redundant_aux_edges(triples: list, keep_if_alone: bool = True) -> l
 
         # Check if dominated by another triple
         dominated = False
-        for other, _other_is_aux in marked:
+        for other, other_is_aux in marked:
             if other is triple:
+                continue
+
+            # Only richer (non-aux-only) triples dominate. Without this,
+            # two aux-only siblings from different fragments of the same
+            # sentence — (Horses | are | grazing peacefully) and the
+            # entailed (Horses | are | grazing) — mutually dominate and
+            # annihilate each other once filtering compares across the
+            # whole sentence.
+            if other_is_aux:
                 continue
 
             # Must have same subject (normalize for comparison)
@@ -167,6 +216,12 @@ def filter_triples(
     Returns:
         Filtered list of triples
     """
+    # Soundness guard, unconditional: a triple whose parse carries a
+    # negation its rendered text dropped asserts the opposite of the
+    # source. Disabling the aux filter opts out of redundancy removal,
+    # not of polarity correctness.
+    triples = [t for t in triples if not drops_parse_negation(t)]
+
     if not enable_aux_filter:
         return triples
 

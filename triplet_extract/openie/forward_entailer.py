@@ -169,6 +169,21 @@ class ForwardEntailer:
         else:
             self.nlp = nlp
 
+        # Every reparse must re-annotate polarity. A freshly parsed Doc has
+        # no polarity annotations, so the deletion gate would project every
+        # relation through Polarity.DEFAULT (upward monotone) — silently
+        # licensing deletions inside downward-entailing scopes ("Tom did
+        # not say that S" -> "Tom did not say", which the original does not
+        # entail). Stanford never hits this: its search deletes nodes from
+        # the SemanticGraph in place, so the polarity set once by the
+        # NaturalLogicAnnotator persists (ForwardEntailerSearchProblem
+        # consults Polarity from the token's CoreLabel throughout).
+        # Reparsing is this port's substitute for in-place graph deletion,
+        # so it must restore what the original annotation provided.
+        from .polarity_annotator import PolarityAnnotator
+
+        self._polarity_annotator = PolarityAnnotator(self.nlp)
+
         # Setup lightweight reparsing for fast mode
         if fast:
             from functools import lru_cache
@@ -182,16 +197,17 @@ class ForwardEntailer:
 
             # Closure-based caching (avoid hashing self)
             nlp_reparse = self.nlp_reparse
+            polarity_annotator = self._polarity_annotator
 
             @lru_cache(maxsize=10000)
             def _reparse_text(text: str):
-                return nlp_reparse(text)
+                return polarity_annotator.annotate(nlp_reparse(text))
 
             self._reparse_text = _reparse_text
             self._reparse_count = 0
         else:
             self.nlp_reparse = self.nlp
-            self._reparse_text = lambda text: self.nlp(text)
+            self._reparse_text = lambda text: self._polarity_annotator.annotate(self.nlp(text))
             self._reparse_count = 0
 
         # Handle deprecated use_gpu parameter
@@ -941,12 +957,13 @@ class ForwardEntailer:
                             texts_to_reparse.append(text)
 
                     # BATCH REPARSE ON GPU! This is the key speedup!
-                    reparsed_docs = list(
-                        self.nlp_reparse.pipe(
+                    reparsed_docs = [
+                        self._polarity_annotator.annotate(d)
+                        for d in self.nlp_reparse.pipe(
                             texts_to_reparse,
                             batch_size=min(len(texts_to_reparse), self.gpu_batch_size),
                         )
-                    )
+                    ]
                     self._reparse_count += len(reparsed_docs)
 
                     # Process reparsed results
@@ -1102,8 +1119,9 @@ class ForwardEntailer:
         remaining_tokens = [doc[i] for i in keep_indices]
         reconstructed_text = reconstruct_text(remaining_tokens)
 
-        # Re-parse to get proper dependencies
-        new_doc = self.nlp(reconstructed_text)
+        # Re-parse to get proper dependencies, restoring polarity
+        # annotations the reparse discards (see __init__)
+        new_doc = self._polarity_annotator.annotate(self.nlp(reconstructed_text))
 
         return new_doc
 

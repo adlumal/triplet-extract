@@ -428,6 +428,12 @@ class OpenIEExtractor:
                     logging.warning(f"ForwardEntailer failed: {e}")
 
             # Stage 3: Relation Triple Segmentation
+            # Collect every fragment's triples before filtering: dominance
+            # comparison must see the whole sentence's triples, because an
+            # aux-only artifact's richer dominating sibling usually comes
+            # from a different fragment. (Per-fragment filtering let a
+            # fragment whose only triple was the artifact keep it.)
+            segmented = []  # (triple, frag_info) pairs in emission order
             for frag_info in fragments:
                 try:
                     # Extract triples from this fragment's Doc (avoid reparsing!)
@@ -453,47 +459,54 @@ class OpenIEExtractor:
                         # Not masked: use all triples
                         triples = all_triples
 
-                    # Filter auxiliary-only triples if enabled
-                    if self.filter_aux_edges:
-                        from .openie.aux_filter import filter_triples
-
-                        triples = filter_triples(
-                            triples,
-                            enable_aux_filter=self.filter_aux_edges,
-                            keep_aux_if_alone=self.keep_aux_if_alone,
-                        )
-
-                    for triple in triples:
-                        # Create triplet key for deduplication
-                        key = (
-                            triple.subject.lower(),
-                            triple.relation.lower(),
-                            triple.object.lower(),
-                        )
-
-                        if key in seen_triplets:
-                            continue
-                        seen_triplets.add(key)
-
-                        # Create output triplet with metadata
-                        triplet = Triplet(
-                            subject=triple.subject,
-                            relation=triple.relation,
-                            object=triple.object,
-                            confidence=frag_info["score"],
-                            from_clause_split=frag_info["from_clause_split"],
-                            from_entailment=frag_info["from_entailment"],
-                            entailment_score=frag_info["score"],
-                            asserter_chain=triple.asserter_chain,
-                            asserter_links=triple.asserter_links,
-                        )
-
-                        all_triplets.append(triplet)
+                    segmented.extend((t, frag_info) for t in triples)
 
                 except Exception as e:
                     logging.warning(
                         f"Triple extraction failed for fragment '{frag_info['text']}': {e}"
                     )
+
+            # Filter at sentence scope: the polarity-drop guard always runs;
+            # aux-only dominance removal honors filter_aux_edges.
+            try:
+                from .openie.aux_filter import filter_triples
+
+                kept = filter_triples(
+                    [t for t, _ in segmented],
+                    enable_aux_filter=self.filter_aux_edges,
+                    keep_aux_if_alone=self.keep_aux_if_alone,
+                )
+                kept_ids = {id(t) for t in kept}
+                segmented = [(t, fi) for t, fi in segmented if id(t) in kept_ids]
+            except Exception as e:
+                logging.warning(f"Triple filtering failed: {e}")
+
+            for triple, frag_info in segmented:
+                # Create triplet key for deduplication
+                key = (
+                    triple.subject.lower(),
+                    triple.relation.lower(),
+                    triple.object.lower(),
+                )
+
+                if key in seen_triplets:
+                    continue
+                seen_triplets.add(key)
+
+                # Create output triplet with metadata
+                triplet = Triplet(
+                    subject=triple.subject,
+                    relation=triple.relation,
+                    object=triple.object,
+                    confidence=frag_info["score"],
+                    from_clause_split=frag_info["from_clause_split"],
+                    from_entailment=frag_info["from_entailment"],
+                    entailment_score=frag_info["score"],
+                    asserter_chain=triple.asserter_chain,
+                    asserter_links=triple.asserter_links,
+                )
+
+                all_triplets.append(triplet)
 
         # Sort by confidence
         all_triplets.sort(key=lambda t: t.confidence, reverse=True)

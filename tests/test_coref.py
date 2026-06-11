@@ -91,3 +91,21 @@ def test_opt_in_resolves_simple_case(coref_extractor):
     on = coref_extractor.extract_triplet_objects(text)
     assert ("Sarah", "burned", "the pasta") in rendered(on)
     assert "She" not in subjects(on)
+
+
+def test_known_limit_dangling_pronoun_wrong_gender(coref_extractor):
+    """KNOWN PRECISION LIMIT, asserted bidirectionally on purpose.
+
+    With no name-gender dictionary, candidate gender is usually UNKNOWN
+    and agreement-compatible with either pronoun, so a dangling gendered
+    pronoun (referent absent from the text) resolves to the single PERSON
+    in scope regardless of the name's apparent gender. This test pins the
+    CURRENT behavior; a future gender-aware mode flipping it should fail
+    here loudly and update the README's known-limit paragraph.
+    """
+    text = "Sarah arrived early. He was annoyed about the delay."
+    on = coref_extractor.extract_triplet_objects(text)
+    assert any(t.subject == "Sarah" and "annoyed" in t.relation for t in on), (
+        "dangling-pronoun misresolution no longer occurs — gender awareness "
+        "seems to have arrived; update README and this test"
+    )

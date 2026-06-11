@@ -280,6 +280,19 @@ agreeing PERSON antecedent exists within the sieve's sentence window —
 otherwise it abstains and leaves the pronoun untouched. A wrong
 substitution poisons downstream facts; an unresolved pronoun is honest.
 
+**Known precision limit (gender):** this package carries no name-gender
+dictionary (Stanford's sieve consulted Bergsma-Lin gender lists), and
+English proper nouns carry no gender morphology — so a candidate's gender
+is usually UNKNOWN, which agreement treats as compatible. Consequence: a
+gendered pronoun whose true referent is *not in the text* can resolve to
+the single PERSON in scope even when the name's apparent gender differs —
+`"Sarah arrived early. He was annoyed."` resolves "He" → Sarah. The
+uniqueness gate cannot catch this (there is exactly one candidate).
+Texts where every gendered pronoun's referent is actually mentioned are
+unaffected; prose with dangling pronouns should keep `resolve_coref`
+off or accept this risk. A future gender-aware mode would require either
+a name-gender model or a neural coreference extra.
+
 ```python
 extractor = OpenIEExtractor(resolve_coref=True)
 triplets = extractor.extract_triplet_objects(

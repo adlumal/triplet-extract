@@ -37,6 +37,14 @@ Scope (high-precision subset):
   here, and possessives do not substitute cleanly as surface strings.
 - Antecedent candidates are PERSON named entities (the animate mention
   subset of dcoref's mention extraction).
+
+Known precision limit: with no name-gender dictionary, candidate gender
+is usually UNKNOWN and therefore agreement-compatible with either
+pronoun. A gendered pronoun whose true referent is absent from the text
+can thus resolve to the single (apparently other-gendered) PERSON in
+scope: "Sarah arrived early. He was annoyed." resolves "He" -> Sarah.
+The uniqueness gate cannot catch a lone candidate. Documented in the
+README; captured as known behavior in tests/test_coref.py.
 """
 
 from spacy.tokens import Doc

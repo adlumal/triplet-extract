@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "triplet-extract"
-version = "0.4.2"
+version = "0.4.3"
 description = "Pure Python triplet extraction based on Stanford OpenIE"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,6 +29,10 @@ classifiers = [
 
 dependencies = [
     "spacy>=3.5.0",
+    # spaCy 3.8 imports click unconditionally (spacy.cli via typer), but
+    # typer >= 0.26 no longer hard-requires click — fresh installs break
+    # without this explicit dependency.
+    "click>=8",
     "javaobj-py3>=0.4.4"
 ]
 

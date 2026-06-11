@@ -131,3 +131,27 @@ def test_bare_verb_advmod_extracts_nothing():
     produces no triple here either, so neither do we."""
     triplets = extract("A cheetah runs fast.")
     assert triplets == []
+
+
+def test_lexical_verb_acomp():
+    """Lexical verbs with adjectival complements ("sounds amazing"):
+    spaCy labels the secondary predicate acomp where UD uses xcomp, so
+    these fall under the same Java pattern as "fish like to swim"."""
+    cases = [
+        ("They sound amazing.", "They", "sound", "amazing"),
+        ("The screen looks stunning.", "The screen", "looks", "stunning"),
+        ("It feels flimsy.", "It", "feels", "flimsy"),
+        ("The sauce tastes awful.", "The sauce", "tastes", "awful"),
+    ]
+    for text, subj, relation, obj in cases:
+        triplets = extract(text)
+        rendered = {(t.subject, t.relation, t.object) for t in triplets}
+        assert (subj, relation, obj) in rendered, f"{text!r}: {rendered}"
+
+
+def test_lexical_verb_acomp_comparative():
+    """A PP on the acomp stays inside the object subtree, mirroring how
+    copular comparatives render ("is faster than a dog")."""
+    triplets = extract("It sounds better than the old one.")
+    rendered = {(t.subject, t.relation, t.object) for t in triplets}
+    assert ("It", "sounds", "better than the old one") in rendered

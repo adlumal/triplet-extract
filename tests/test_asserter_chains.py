@@ -79,21 +79,27 @@ def test_conj_shared_subject_resolution():
     assert segmenter._get_subtree_text(subject) == "My friend Sarah"
 
 
-def test_adversarial_review_author_clauses_are_direct():
+def test_adversarial_review_praise_is_never_author_direct():
     """
     "My friend Sarah loved them and said they were perfect.": natural
-    logic correctly refuses to emit the praise as a free-standing triplet
-    (ccomp content is not entailed), so the praise only appears inside
-    the object of author-level renderings — all of which are directly
-    asserted (chain None). The attribution is recoverable downstream from
-    the "said" relation plus its subject.
+    logic refuses to emit the praise as a free-standing author assertion
+    (ccomp content is not entailed). The praise appears only either (a)
+    inside the object of an author-level rendering, or (b) in a "said"-
+    rendering that carries an asserter chain — never as an author-direct
+    (chain None) standalone claim that "they were perfect".
     """
     triplets = extract("My friend Sarah loved them and said they were perfect.")
     assert len(triplets) > 0
-    for t in triplets:
-        assert t.asserter_chain is None, t.to_dict()
 
-    # The praise content is present, embedded in an object
+    for t in triplets:
+        praise_is_the_claim = "perfect" in t.object and "said" not in t.relation
+        if praise_is_the_claim and t.asserter_chain is None:
+            # Allowed only when the praise sits inside a larger object that
+            # is itself reported (e.g. "... said they were perfect"); a bare
+            # author-direct praise claim is the failure we guard against.
+            assert "said" in t.object, f"author-direct praise leaked: {t.to_dict()}"
+
+    # The praise content is present somewhere
     assert any("perfect" in t.object for t in triplets)
 
 
@@ -122,3 +128,65 @@ def test_to_dict_includes_chain():
 
     author = find(triplets, "Tom", "said", "Sarah claimed the food was cold")
     assert author.to_dict()["asserter_chain"] is None
+
+
+def link_for(triplets, subject, relation, obj):
+    t = find(triplets, subject, relation, obj)
+    assert t is not None and t.asserter_links, [x.to_dict() for x in triplets]
+    return t.asserter_links
+
+
+def test_non_speech_complement_verb_attributes():
+    """A complement-taking verb outside Stanford's 8 speech lemmas still
+    attributes its embedded content; speech_act marks it False."""
+    triplets = extract("Tom denied Sarah ate the cake.")
+    links = link_for(triplets, "Sarah", "ate", "the cake")
+    assert len(links) == 1
+    assert links[0].asserter == "Tom"
+    assert links[0].verb == "deny"
+    assert links[0].speech_act is False
+    assert links[0].negated is False
+
+
+def test_evidential_verb_attributes_to_source():
+    """Evidential constructions ("the study shows X") attribute the
+    embedded finding to the evidence source."""
+    triplets = extract("The study shows smoking causes cancer.")
+    links = link_for(triplets, "smoking", "causes", "cancer")
+    assert links[0].asserter == "The study"
+    assert links[0].verb == "show"
+    assert links[0].speech_act is False
+
+
+def test_negated_speech_verb_sets_negated_flag():
+    """ "did not say" must be distinguishable from "said" so a consumer
+    does not read denial as endorsement."""
+    triplets = extract("Tom did not say Sarah ate the cake.")
+    links = link_for(triplets, "Sarah", "ate", "the cake")
+    assert links[0].asserter == "Tom"
+    assert links[0].verb == "say"
+    assert links[0].speech_act is True
+    assert links[0].negated is True
+
+
+def test_speech_act_flag_true_for_canonical_verbs():
+    triplets = extract("Tom said Sarah claimed the food was cold.")
+    links = link_for(triplets, "Sarah", "claimed", "the food was cold")
+    assert links[0].verb == "say"
+    assert links[0].speech_act is True
+    assert links[0].negated is False
+
+
+def test_links_to_dict_shape():
+    triplets = extract("Tom denied Sarah ate the cake.")
+    t = find(triplets, "Sarah", "ate", "the cake")
+    d = t.to_dict()
+    assert d["asserter_links"] == [
+        {
+            "asserter": "Tom",
+            "verb": "deny",
+            "construction": "ccomp",
+            "speech_act": False,
+            "negated": False,
+        }
+    ]

@@ -28,6 +28,7 @@ from .normalizer import normalize_quantities
 from .openie.clause_splitter import ClauseSplitter
 from .openie.forward_entailer import ForwardEntailer
 from .openie.polarity_annotator import PolarityAnnotator
+from .quotes import strip_speech_quotes
 
 # Optional: tqdm for progress bars
 try:
@@ -54,10 +55,13 @@ class Triplet:
 
     # Attribution metadata: who asserts this triplet. None = asserted
     # directly by the document author. For content embedded under
-    # attitude/speech verbs ("Tom said Sarah claimed the food was cold"),
-    # lists the asserters outermost-first (["Tom", "Sarah"] for the
-    # innermost clause). Metadata only — rendered strings are unaffected.
+    # communication/cognition verbs ("Tom said Sarah claimed the food was
+    # cold"), lists the asserters outermost-first (["Tom", "Sarah"] for the
+    # innermost clause). asserter_links carries the governing verb,
+    # construction, and polarity per link. Metadata only — rendered strings
+    # are unaffected.
     asserter_chain: list[str] | None = None
+    asserter_links: list[Any] | None = None
 
     def __str__(self):
         return f"({self.subject}, {self.relation}, {self.object})"
@@ -72,6 +76,9 @@ class Triplet:
             "from_entailment": self.from_entailment,
             "entailment_score": self.entailment_score,
             "asserter_chain": self.asserter_chain,
+            "asserter_links": (
+                [link.to_dict() for link in self.asserter_links] if self.asserter_links else None
+            ),
         }
 
 
@@ -261,6 +268,12 @@ class OpenIEExtractor:
         # Parse with Spacy
         doc = self.nlp(text)
 
+        # Normalize direct-quote speech to its canonical reported form so
+        # quoted content cannot escape attribution (see quotes.py).
+        normalized = strip_speech_quotes(doc)
+        if normalized is not None and normalized != text:
+            doc = self.nlp(normalized)
+
         # Optional gated pronoun resolution (document-level, so antecedents
         # in earlier sentences are visible to later ones)
         if self.resolve_coref:
@@ -435,6 +448,7 @@ class OpenIEExtractor:
                             from_entailment=frag_info["from_entailment"],
                             entailment_score=frag_info["score"],
                             asserter_chain=triple.asserter_chain,
+                            asserter_links=triple.asserter_links,
                         )
 
                         all_triplets.append(triplet)
@@ -522,6 +536,11 @@ class OpenIEExtractor:
             iterator = tqdm(iterator, total=len(texts), desc="Extracting triplets")
 
         for _text, doc, latex_map in iterator:
+            # Normalize direct-quote speech (see quotes.py)
+            normalized = strip_speech_quotes(doc)
+            if normalized is not None:
+                doc = self.nlp(normalized)
+
             # Optional gated pronoun resolution (document-level)
             if self.resolve_coref:
                 from .coref import resolve_unique_pronouns
@@ -650,6 +669,7 @@ class OpenIEExtractor:
                                 from_entailment=frag_info["from_entailment"],
                                 entailment_score=frag_info["score"],
                                 asserter_chain=triple.asserter_chain,
+                                asserter_links=triple.asserter_links,
                             )
                             all_triplets.append(triplet)
                     except Exception as e:

@@ -467,6 +467,30 @@
         }
       ],
       "category": "verb"
+    },
+    {
+      "test_name": "testTheySoundAmazing",
+      "sentence": "the headphones sound amazing",
+      "expected_triples": [
+        {
+          "subject": "the headphones",
+          "relation": "sound",
+          "object": "amazing"
+        }
+      ],
+      "category": "verb"
+    },
+    {
+      "test_name": "testScreenLooksStunning",
+      "sentence": "the screen looks stunning",
+      "expected_triples": [
+        {
+          "subject": "the screen",
+          "relation": "looks",
+          "object": "stunning"
+        }
+      ],
+      "category": "verb"
     }
   ],
   "nominal_patterns": [

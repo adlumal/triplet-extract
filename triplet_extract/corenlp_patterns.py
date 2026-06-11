@@ -17,6 +17,37 @@ from .openie.text_utils import reconstruct_text, reconstruct_text_from_strings
 
 
 @dataclass
+class AsserterLink:
+    """
+    One link in a triple's attribution chain: a source that asserts the
+    embedded content, plus how it asserts it.
+
+    Produced when a triple's predicate sits inside a clausal complement
+    (ccomp/xcomp) governed by a communication/cognition verb. The `verb`
+    and `negated` fields let a consumer distinguish endorsement from denial
+    ("Tom denied X" must not read as Tom asserting X), and `speech_act`
+    flags the canonical reported-speech verbs (Stanford's
+    INDIRECT_SPEECH_LEMMAS) versus the wider class of complement-taking
+    verbs ("show", "suggest").
+    """
+
+    asserter: str  # resolved subject of the governing verb
+    verb: str  # governing verb lemma ("say", "deny", "show")
+    construction: str  # "ccomp" | "xcomp" | "quote"
+    speech_act: bool  # governing verb is one of INDIRECT_SPEECH_LEMMAS
+    negated: bool  # governing verb carries a syntactic negation
+
+    def to_dict(self) -> dict:
+        return {
+            "asserter": self.asserter,
+            "verb": self.verb,
+            "construction": self.construction,
+            "speech_act": self.speech_act,
+            "negated": self.negated,
+        }
+
+
+@dataclass
 class Triple:
     """A relation triple: (subject, relation, object) with token-level information."""
 
@@ -32,11 +63,14 @@ class Triple:
 
     # Attribution metadata: who asserts this triple, per the dependency
     # structure. None = asserted directly by the document/sentence author.
-    # For content embedded under attitude/speech verbs ("Tom said Sarah
-    # claimed the food was cold"), the chain lists the asserters from the
-    # outermost inward (["Tom", "Sarah"] for the innermost clause).
-    # Metadata only: rendered subject/relation/object strings are unaffected.
+    # For content embedded under communication/cognition verbs ("Tom said
+    # Sarah claimed the food was cold"), the chain lists the asserters from
+    # the outermost inward (["Tom", "Sarah"] for the innermost clause).
+    # asserter_chain is the convenience view (just the asserter strings);
+    # asserter_links carries the governing verb, construction, and polarity
+    # for each link. Metadata only: rendered strings are unaffected.
     asserter_chain: list[str] | None = None
+    asserter_links: list[AsserterLink] | None = None
 
     def to_tuple(self) -> tuple[str, str, str]:
         return (self.subject, self.relation, self.object)
@@ -47,6 +81,9 @@ class Triple:
             "relation": self.relation,
             "object": self.object,
             "asserter_chain": self.asserter_chain,
+            "asserter_links": (
+                [link.to_dict() for link in self.asserter_links] if self.asserter_links else None
+            ),
         }
 
 
@@ -119,7 +156,9 @@ class CoreNLPStyleExtractor:
         # rendered triplet strings are never affected.
         for triple in triples:
             if triple.relation_head is not None:
-                triple.asserter_chain = self._asserter_chain(triple.relation_head)
+                links = self._asserter_links(triple.relation_head)
+                triple.asserter_links = links
+                triple.asserter_chain = [link.asserter for link in links] if links else None
 
         return triples
 
@@ -283,11 +322,25 @@ class CoreNLPStyleExtractor:
                     obj = child
                     break
 
-            if obj is None:
-                continue
+            if obj is not None:
+                # Skip if dobj has prep children (Pattern 6 handles this -
+                # object in relation)
+                if any(child.dep_ == "prep" for child in obj.children):
+                    continue
+            else:
+                # Fallback: adjectival complement of a lexical verb
+                # ("They sound amazing", "The screen looks stunning").
+                # The Java pattern's object term is >/[di]?obj|xcomp/ — UD
+                # renders this secondary predicate as xcomp of the verb,
+                # which spaCy labels acomp, so accepting acomp on a VERB
+                # head is the same pattern expressed in spaCy's label
+                # space. (AUX+acomp copulas — "is amazing" — stay with
+                # Pattern 2, and a PP on the acomp stays inside the object
+                # subtree — "sounds better than the old one" — exactly as
+                # Pattern 2 renders copular comparatives.)
+                obj = next((c for c in token.children if c.dep_ == "acomp"), None)
 
-            # Skip if dobj has prep children (Pattern 6 handles this - object in relation)
-            if any(child.dep_ == "prep" for child in obj.children):
+            if obj is None:
                 continue
 
             # Extract spans
@@ -1165,9 +1218,9 @@ class CoreNLPStyleExtractor:
     # Helper Methods
     # ==================================================================
 
-    def _asserter_chain(self, relation_head: Token) -> list[str] | None:
+    def _asserter_links(self, relation_head: Token) -> list[AsserterLink] | None:
         """
-        Compute the asserter chain for a triple's predicate.
+        Compute the attribution chain for a triple's predicate.
 
         Reported/attributed content is not asserted by the document author:
         in "Tom said Sarah claimed the food was cold", the claim about the
@@ -1176,39 +1229,66 @@ class CoreNLPStyleExtractor:
         (see should_skip_indirect_speech, ported from
         ClauseSplitterSearchProblem.java:857-864, with Stanford's
         INDIRECT_SPEECH_LEMMAS from ClauseSplitterSearchProblem.java:100-102);
-        here the same detection is used to RECORD the attribution instead.
+        here the same structure is used to RECORD the attribution instead.
 
-        Walks from the relation head up to the sentence root; each time a
-        ccomp/xcomp edge governed by an attitude/speech verb is crossed,
-        the governor's resolved subject is recorded. Returns the chain
-        ordered outermost-first (["Tom", "Sarah"] for the innermost clause
-        above), or None for directly asserted content.
+        Walks from the relation head up to the sentence root and records a
+        link each time a clausal-complement edge is crossed:
+
+        - ccomp governed by any VERB: a finite clausal complement is the
+          clausal-complement-of-attitude construction almost by definition
+          (and the package already treats every ccomp as REVERSE_ENTAILMENT
+          in natural logic), so its content is attributed to the governor's
+          subject. The POS guard skips noun-headed parse errors.
+        - xcomp governed by a speech-act verb only: xcomp is normally an
+          open (subject-controlled) complement ("fish like to swim") whose
+          embedded subject is the SAME entity, so attribution there would
+          be vacuous; it is recorded only for the canonical speech verbs.
+
+        Each link carries the governing verb lemma, whether it is a
+        speech-act verb (INDIRECT_SPEECH_LEMMAS), and whether it is
+        syntactically negated, so a consumer can tell endorsement from
+        denial ("Tom denied X"). Links are ordered outermost-first.
 
         Args:
             relation_head: Head token of the triple's relation
 
         Returns:
-            List of asserter texts (outermost first), or None
+            List of AsserterLink (outermost first), or None
         """
-        chain = []
+        links = []
         token = relation_head
         seen = set()  # guard against malformed head chains in rebuilt docs
         while token.head.i != token.i and token.i not in seen:
             seen.add(token.i)
-            if token.dep_ in ("ccomp", "xcomp"):
-                governor = token.head
-                governor_lemma = governor.lemma_.lower() if governor.lemma_ else ""
-                if (
-                    governor_lemma in INDIRECT_SPEECH_LEMMAS
-                    or governor.text.lower() in INDIRECT_SPEECH_LEMMAS
-                ):
-                    subject = self._resolve_clause_subject(governor)
-                    if subject is not None:
-                        chain.append(self._get_subtree_text(subject))
+            governor = token.head
+            governor_lemma = governor.lemma_.lower() if governor.lemma_ else ""
+            is_speech = (
+                governor_lemma in INDIRECT_SPEECH_LEMMAS
+                or governor.text.lower() in INDIRECT_SPEECH_LEMMAS
+            )
+
+            record = False
+            if token.dep_ == "ccomp" and governor.pos_ == "VERB":
+                record = True
+            elif token.dep_ == "xcomp" and is_speech:
+                record = True
+
+            if record:
+                subject = self._resolve_clause_subject(governor)
+                if subject is not None:
+                    links.append(
+                        AsserterLink(
+                            asserter=self._get_subtree_text(subject),
+                            verb=governor_lemma or governor.text.lower(),
+                            construction=token.dep_,
+                            speech_act=is_speech,
+                            negated=any(c.dep_ == "neg" for c in governor.children),
+                        )
+                    )
             token = token.head
 
-        chain.reverse()
-        return chain or None
+        links.reverse()
+        return links or None
 
     def _resolve_clause_subject(self, verb: Token) -> Token | None:
         """

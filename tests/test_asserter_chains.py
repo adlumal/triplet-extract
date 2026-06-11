@@ -188,5 +188,6 @@ def test_links_to_dict_shape():
             "construction": "ccomp",
             "speech_act": False,
             "negated": False,
+            "cluster": None,
         }
     ]

@@ -38,6 +38,9 @@ deepsearch = [
     "cupy-cuda12x>=12.0.0; platform_system!='Darwin'",  # CUDA 12.x for Linux/Windows
     "spacy[cuda12x]>=3.5.0; platform_system!='Darwin'",  # GPU-accelerated spaCy
 ]
+coref = [
+    "sentence-transformers>=2.2.0",  # name-gender prior for resolve_coref (CPU)
+]
 dev = [
     "pytest>=7.0.0",
     "black>=24.0.0",

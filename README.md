@@ -270,28 +270,30 @@ This is metadata only: rendered subject/relation/object strings are
 unchanged. Useful for knowledge graphs that track provenance, source
 reliability, and testimony.
 
+Each triplet also carries `asserter_links`, the structured form of the
+chain: per link, the `asserter`, the governing `verb` lemma, the
+`construction` (`ccomp`/`xcomp`/`quote`), a `speech_act` flag (the
+canonical reported-speech verbs), and a `negated` flag — so a consumer can
+tell endorsement from denial (`Tom denied X` and `Tom did not say X` are
+not Tom asserting X). Chains are recorded for any complement-taking verb,
+including evidential ones (`The study shows X` attributes X to the study).
+
+Direct quoted speech is handled too: `"The food was amazing," said Tom.`
+attributes the quoted content to Tom rather than leaking it as an
+author-level fact or producing cross-boundary garbage.
+
 ### Pronoun Resolution (Opt-In)
 
 `resolve_coref=True` substitutes third-person pronouns with their
 antecedents before extraction, using a port of the pronoun sieve from
 Stanford's deterministic coreference system (Lee et al., 2011) with one
 deliberate change: a pronoun is substituted ONLY when exactly one
-agreeing PERSON antecedent exists within the sieve's sentence window —
-otherwise it abstains and leaves the pronoun untouched. A wrong
-substitution poisons downstream facts; an unresolved pronoun is honest.
-
-**Known precision limit (gender):** this package carries no name-gender
-dictionary (Stanford's sieve consulted Bergsma-Lin gender lists), and
-English proper nouns carry no gender morphology — so a candidate's gender
-is usually UNKNOWN, which agreement treats as compatible. Consequence: a
-gendered pronoun whose true referent is *not in the text* can resolve to
-the single PERSON in scope even when the name's apparent gender differs —
-`"Sarah arrived early. He was annoyed."` resolves "He" → Sarah. The
-uniqueness gate cannot catch this (there is exactly one candidate).
-Texts where every gendered pronoun's referent is actually mentioned are
-unaffected; prose with dangling pronouns should keep `resolve_coref`
-off or accept this risk. A future gender-aware mode would require either
-a name-gender model or a neural coreference extra.
+agreeing antecedent exists within the sieve's sentence window — otherwise
+it abstains and leaves the pronoun untouched. A wrong substitution poisons
+downstream facts; an unresolved pronoun is honest. Singular gendered
+pronouns ("he"/"she") resolve to PERSON antecedents; plural "they"/"them"
+resolve to a unique plural noun phrase ("I love these headphones. They
+sound amazing." → `(these headphones, sound, amazing)`).
 
 ```python
 extractor = OpenIEExtractor(resolve_coref=True)
@@ -301,12 +303,35 @@ triplets = extractor.extract_triplet_objects(
 # (Obama, has, a nice smile) — instead of (he, has, a nice smile)
 ```
 
-Ambiguous cases abstain by design: with "Tom met Sarah at the cafe. She
-ordered coffee.", the pronoun stays "She" (two candidate persons, and no
-word lists are used to guess gender for names). Winograd-style pronouns
-("it" with world-knowledge ambiguity) are out of scope and never
-substituted. Default is OFF because substitution changes rendered
-triplet strings.
+Ambiguous cases abstain by design: with "Sarah met Mary at the cafe. She
+ordered coffee.", the pronoun stays "She" (two candidates the resolver
+cannot separate). Winograd-style pronouns ("it" with world-knowledge
+ambiguity) are out of scope and never substituted. Default is OFF because
+substitution changes rendered triplet strings.
+
+**Name gender (optional `coref` extra).** English proper nouns carry no
+gender morphology, so by default a gendered pronoun whose referent is
+absent can resolve to the lone PERSON in scope regardless of that name's
+apparent gender (`"Sarah arrived early. He was annoyed."` → He→Sarah).
+Installing the `coref` extra adds a small CPU sentence-embedding model
+(`BAAI/bge-small-en`) that supplies a name-gender signal; a confident
+name/pronoun conflict then vetoes the resolution (He stays unresolved),
+while genuinely unisex names abstain and fall back to the uniqueness gate.
+The model is lazy-loaded only when a gender decision is needed.
+
+```bash
+pip install triplet-extract[coref]
+```
+
+### Source-Identity Clustering (Opt-In)
+
+`cluster_sources=True` assigns a `subject_cluster` id to each triplet (and
+a `cluster` to each asserter link) so that different mentions of one
+source share an id — "My friend Sarah", "my friend", and "Sarah" become
+one cluster. It ports the lexicon-free structural sieves of Stanford's
+deterministic coreference (exact match, relaxed head match, shared proper
+name, head match with a conflicting-name guard). Metadata only — rendered
+strings are unchanged.
 
 ### Batch Processing
 

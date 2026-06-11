@@ -21,6 +21,7 @@ from typing import Any
 
 import spacy
 
+from .clustering import cluster_mentions
 from .corenlp_patterns import CoreNLPStyleExtractor
 from .normalizer import normalize_quantities
 
@@ -63,6 +64,11 @@ class Triplet:
     asserter_chain: list[str] | None = None
     asserter_links: list[Any] | None = None
 
+    # Source-identity cluster id for the subject (see clustering.py).
+    # Populated only when cluster_sources=True; mentions of the same source
+    # ("My friend Sarah" / "my friend" / "Sarah") share an id. Metadata only.
+    subject_cluster: int | None = None
+
     def __str__(self):
         return f"({self.subject}, {self.relation}, {self.object})"
 
@@ -79,6 +85,7 @@ class Triplet:
             "asserter_links": (
                 [link.to_dict() for link in self.asserter_links] if self.asserter_links else None
             ),
+            "subject_cluster": self.subject_cluster,
         }
 
 
@@ -111,6 +118,8 @@ class OpenIEExtractor:
         gpu_batch_size: int | None = None,
         use_gpu: bool | None = None,  # Deprecated, use deep_search
         resolve_coref: bool = False,
+        coref_gender_prior: Any = None,
+        cluster_sources: bool = False,
     ):
         """
         Initialize the full OpenIE extractor.
@@ -137,7 +146,18 @@ class OpenIEExtractor:
                 extraction, but only when a unique agreeing antecedent exists
                 in scope (otherwise the pronoun is left untouched). Changes
                 rendered triplet strings, so it is opt-in (default: False).
-                See triplet_extract.coref for the gating rules.
+                See triplet_extract.coref for the gating rules. When the
+                `coref` extra (sentence-transformers) is installed, an
+                embedding name-gender prior is used to veto gender-conflicting
+                antecedents; otherwise resolution stays lexicon-free.
+            coref_gender_prior: Override the name-gender prior used by
+                resolve_coref (any object with a .gender(name) -> "MALE"|
+                "FEMALE"|None method). Defaults to auto-detection.
+            cluster_sources: Assign a source-identity cluster id to each
+                triplet's subject and asserter mentions, so mentions of the
+                same source ("My friend Sarah" / "my friend" / "Sarah")
+                share an id (see clustering.py). Metadata only — rendered
+                strings are unchanged (default: False).
         """
         # Initialize spaCy parser
         if nlp is None:
@@ -181,6 +201,21 @@ class OpenIEExtractor:
         self.preserve_latex = preserve_latex
         self.deep_search = deep_search
         self.resolve_coref = resolve_coref
+        self.cluster_sources = cluster_sources
+
+        # Optional embedding name-gender prior for coreference (see
+        # gender.py). Built only when coref is on and the `coref` extra is
+        # installed; otherwise the resolver stays lexicon-free (uniqueness
+        # gate only). Lazy model load: nothing is loaded until a gender
+        # decision is actually needed.
+        self._gender_prior = None
+        if resolve_coref and coref_gender_prior is None:
+            from .gender import NameGenderPrior
+
+            if NameGenderPrior.is_available():
+                self._gender_prior = NameGenderPrior()
+        else:
+            self._gender_prior = coref_gender_prior
 
         # Initialize LaTeX preprocessor if needed
         if self.preserve_latex:
@@ -279,7 +314,7 @@ class OpenIEExtractor:
         if self.resolve_coref:
             from .coref import resolve_unique_pronouns
 
-            resolved_text = resolve_unique_pronouns(doc)
+            resolved_text = resolve_unique_pronouns(doc, self._gender_prior)
             if resolved_text is not None:
                 doc = self.nlp(resolved_text)
 
@@ -467,11 +502,36 @@ class OpenIEExtractor:
             triplet.relation = normalize_quantities(triplet.relation)
             triplet.object = normalize_quantities(triplet.object)
 
+        # Source-identity clustering (metadata only)
+        if self.cluster_sources:
+            self._assign_source_clusters(all_triplets)
+
         logging.debug(
             f"Extracted {len(all_triplets)} unique triplets from {len(sentences)} sentences"
         )
 
         return all_triplets
+
+    def _assign_source_clusters(self, triplets: list[Triplet]) -> None:
+        """
+        Assign source-identity cluster ids to subjects and asserter links.
+
+        Mentions of the same source share an id (see clustering.py). Metadata
+        only — rendered strings are untouched.
+        """
+        mentions = set()
+        for t in triplets:
+            mentions.add(t.subject)
+            for link in t.asserter_links or []:
+                mentions.add(link.asserter)
+        if not mentions:
+            return
+
+        clusters = cluster_mentions(mentions, self.nlp)
+        for t in triplets:
+            t.subject_cluster = clusters.get(t.subject)
+            for link in t.asserter_links or []:
+                link.cluster = clusters.get(link.asserter)
 
     def extract_triplets_as_strings(self, text: str) -> list[str]:
         """
@@ -545,7 +605,7 @@ class OpenIEExtractor:
             if self.resolve_coref:
                 from .coref import resolve_unique_pronouns
 
-                resolved_text = resolve_unique_pronouns(doc)
+                resolved_text = resolve_unique_pronouns(doc, self._gender_prior)
                 if resolved_text is not None:
                     doc = self.nlp(resolved_text)
 
@@ -685,6 +745,10 @@ class OpenIEExtractor:
                 triplet.subject = normalize_quantities(triplet.subject)
                 triplet.relation = normalize_quantities(triplet.relation)
                 triplet.object = normalize_quantities(triplet.object)
+
+            # Source-identity clustering (metadata only)
+            if self.cluster_sources:
+                self._assign_source_clusters(all_triplets)
 
             # Restore LaTeX notation if preprocessing was enabled
             if self.preserve_latex and latex_map:

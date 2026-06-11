@@ -31,20 +31,22 @@ that need world knowledge (Winograd-style ambiguity, several candidate
 persons in scope) are therefore deliberately left alone.
 
 Scope (high-precision subset):
-- Third-person singular personal pronouns with grammatical gender
-  ("he", "she", "him", "her"), excluding possessives — dcoref clusters
-  mentions without rewriting text, so text substitution is the new step
-  here, and possessives do not substitute cleanly as surface strings.
-- Antecedent candidates are PERSON named entities (the animate mention
-  subset of dcoref's mention extraction).
+- Third-person singular gendered personal pronouns ("he", "she", "him",
+  "her"), excluding possessives — dcoref clusters mentions without
+  rewriting text, so text substitution is the new step here, and
+  possessives do not substitute cleanly as surface strings. Antecedents
+  are PERSON named entities (the animate mention subset).
+- Third-person plural personal pronouns ("they", "them"), with plural
+  noun-phrase antecedents (the cheap, high-value non-person case). Singular
+  "it" is excluded — its resolution is Winograd-class (world knowledge),
+  which this resolver abstains on.
 
-Known precision limit: with no name-gender dictionary, candidate gender
-is usually UNKNOWN and therefore agreement-compatible with either
-pronoun. A gendered pronoun whose true referent is absent from the text
-can thus resolve to the single (apparently other-gendered) PERSON in
-scope: "Sarah arrived early. He was annoyed." resolves "He" -> Sarah.
-The uniqueness gate cannot catch a lone candidate. Documented in the
-README; captured as known behavior in tests/test_coref.py.
+Name gender: English proper nouns carry no Gender morphology, so by
+default a gendered pronoun whose referent is absent can resolve to the
+lone PERSON in scope regardless of that name's apparent gender. The
+optional name-gender prior (gender.py, the `coref` extra) closes this:
+a confident name/pronoun gender conflict vetoes the candidate. Without
+the extra the resolver stays lexicon-free (uniqueness gate only).
 """
 
 from spacy.tokens import Doc
@@ -54,27 +56,40 @@ from spacy.tokens import Doc
 PRONOUN_SENTENCE_WINDOW = 3
 
 
-def _is_candidate_pronoun(token) -> bool:
+def _pronoun_kind(token) -> str | None:
     """
-    Third-person singular gendered personal pronoun, not possessive.
+    Classify a token as a resolvable pronoun, or None.
 
-    Mirrors dcoref's pronominal mention gating (PronounMatch DO_PRONOUN;
-    person/gender from Mention.setPerson/setGender), with spaCy morphology
-    replacing the pronoun dictionaries.
+    - "person": third-person singular gendered personal pronoun
+      ("he"/"she"/"him"/"her"). Antecedents are PERSON named entities —
+      animate mentions, mirroring dcoref's pronominal gating (PronounMatch
+      DO_PRONOUN; person/gender from Mention.setPerson/setGender).
+    - "plural": third-person plural personal pronoun ("they"/"them").
+      Antecedents are plural noun phrases. Singular non-person pronouns
+      ("it") are deliberately excluded — their resolution is Winograd-class
+      (world knowledge), which this resolver abstains on.
+
+    Possessives are excluded (dcoref clusters mentions without rewriting
+    text; possessives do not substitute cleanly as surface strings).
     """
     if token.pos_ != "PRON":
-        return False
+        return None
     morph = token.morph
-    return (
-        morph.get("PronType") == ["Prs"]
-        and morph.get("Person") == ["3"]
-        and morph.get("Number") == ["Sing"]
-        and morph.get("Gender") in (["Masc"], ["Fem"])
-        and morph.get("Poss") != ["Yes"]
-    )
+    if morph.get("PronType") != ["Prs"] or morph.get("Person") != ["3"]:
+        return None
+    if morph.get("Poss") == ["Yes"]:
+        return None
+    if morph.get("Number") == ["Sing"] and morph.get("Gender") in (["Masc"], ["Fem"]):
+        return "person"
+    if morph.get("Number") == ["Plur"]:
+        return "plural"
+    return None
 
 
-def _attributes_agree(pronoun, entity) -> bool:
+_PRONOUN_GENDER = {"Masc": "MALE", "Fem": "FEMALE"}
+
+
+def _attributes_agree(pronoun, entity, gender_prior=None) -> bool:
     """
     Port of Rules.entityAttributesAgree (Rules.java:216-291), reduced to
     the singleton-mention case: for each attribute, a conflict exists only
@@ -82,6 +97,11 @@ def _attributes_agree(pronoun, entity) -> bool:
     morphology) is compatible with anything.
 
     Attributes checked, as in the Java: number, gender, animacy.
+
+    gender_prior (optional, see gender.py): supplies a name-gender signal
+    that English proper nouns lack morphologically. When it returns a
+    confident gender that conflicts with the pronoun, the candidate is
+    rejected; an unknown/abstaining prior leaves the candidate eligible.
     """
     root = entity.root
 
@@ -96,29 +116,58 @@ def _attributes_agree(pronoun, entity) -> bool:
     if gender and gender != pronoun.morph.get("Gender"):
         return False
 
+    # Optional embedding name-gender prior (gender.py): only a confident
+    # conflict vetoes; abstention leaves the candidate eligible.
+    if gender_prior is not None and not gender:
+        pronoun_gender = next(iter(pronoun.morph.get("Gender")), None)
+        want = _PRONOUN_GENDER.get(pronoun_gender)
+        if want is not None:
+            name_gender = gender_prior.gender(entity.text)
+            if name_gender is not None and name_gender != want:
+                return False
+
     # Animacy (Mention.setAnimacy, Mention.java:619): gendered personal
     # pronouns are animate; PERSON entities are animate (NER switch,
     # Mention.java:630-633) — always compatible within this port's scope
     return True
 
 
-def resolve_unique_pronouns(doc: Doc) -> str | None:
+def _plural_antecedent_spans(doc):
+    """
+    Plural noun-phrase antecedent candidates: noun chunks (and plural
+    named entities) headed by a plural common/proper noun. Pronoun-headed
+    chunks are excluded — "they" does not antecede "they".
+    """
+    spans = []
+    for chunk in doc.noun_chunks:
+        root = chunk.root
+        if root.pos_ in ("NOUN", "PROPN") and root.morph.get("Number") == ["Plur"]:
+            spans.append(chunk)
+    for ent in doc.ents:
+        if ent.root.morph.get("Number") == ["Plur"] and ent.root.pos_ in ("NOUN", "PROPN"):
+            spans.append(ent)
+    return spans
+
+
+def resolve_unique_pronouns(doc: Doc, gender_prior=None) -> str | None:
     """
     Resolve uniquely-determined pronouns in a parsed document.
 
-    For each in-scope pronoun, collect PERSON-entity antecedents from the
-    preceding PRONOUN_SENTENCE_WINDOW sentences (and the current sentence,
-    before the pronoun); substitute only when exactly one agreeing
-    candidate exists (repeated mentions of the same name count once).
-    Otherwise abstain and leave the pronoun untouched.
+    For each in-scope pronoun, collect agreeing antecedent candidates from
+    the preceding PRONOUN_SENTENCE_WINDOW sentences (and the current
+    sentence, before the pronoun) — PERSON entities for singular gendered
+    pronouns, plural noun phrases for "they"/"them". Substitute only when
+    exactly one distinct candidate (by text) exists; otherwise abstain.
 
     Args:
-        doc: Parsed spaCy Doc (full document, so cross-sentence
-            antecedents are visible)
+        doc: Parsed spaCy Doc (full document, so cross-sentence antecedents
+            are visible)
+        gender_prior: optional name-gender prior (see gender.py); only
+            vetoes confident gender conflicts for singular pronouns
 
     Returns:
-        The rewritten text if at least one pronoun was resolved,
-        otherwise None (nothing to change — use the original).
+        The rewritten text if at least one pronoun was resolved, otherwise
+        None (nothing to change — use the original).
     """
     sentences = list(doc.sents)
     if not sentences:
@@ -130,25 +179,36 @@ def resolve_unique_pronouns(doc: Doc) -> str | None:
             sent_index[token.i] = i
 
     person_entities = [ent for ent in doc.ents if ent.label_ == "PERSON"]
+    plural_spans = None  # built lazily; noun_chunks parse can be non-trivial
 
     replacements = {}  # token index -> replacement text
     for token in doc:
-        if not _is_candidate_pronoun(token):
+        kind = _pronoun_kind(token)
+        if kind is None:
             continue
 
         token_sent = sent_index[token.i]
         window_start = sentences[max(0, token_sent - PRONOUN_SENTENCE_WINDOW)].start
 
-        candidates = [
-            ent
-            for ent in person_entities
-            if ent.end <= token.i and ent.start >= window_start and _attributes_agree(token, ent)
-        ]
+        if kind == "person":
+            candidates = [
+                ent
+                for ent in person_entities
+                if ent.end <= token.i
+                and ent.start >= window_start
+                and _attributes_agree(token, ent, gender_prior)
+            ]
+        else:  # plural
+            if plural_spans is None:
+                plural_spans = _plural_antecedent_spans(doc)
+            candidates = [
+                span for span in plural_spans if span.end <= token.i and span.start >= window_start
+            ]
 
         # Uniqueness gate (divergence from dcoref's salience ranking —
-        # see module docstring): repeated mentions of one name are a
-        # single candidate; two distinct names mean ambiguity -> abstain
-        unique_texts = {ent.text for ent in candidates}
+        # see module docstring): repeated mentions of the same surface form
+        # are a single candidate; two distinct ones mean ambiguity -> abstain
+        unique_texts = {span.text for span in candidates}
         if len(unique_texts) != 1:
             continue
 

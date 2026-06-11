@@ -36,6 +36,7 @@ class AsserterLink:
     construction: str  # "ccomp" | "xcomp" | "quote"
     speech_act: bool  # governing verb is one of INDIRECT_SPEECH_LEMMAS
     negated: bool  # governing verb carries a syntactic negation
+    cluster: int | None = None  # source-identity cluster id (see clustering.py)
 
     def to_dict(self) -> dict:
         return {
@@ -44,6 +45,7 @@ class AsserterLink:
             "construction": self.construction,
             "speech_act": self.speech_act,
             "negated": self.negated,
+            "cluster": self.cluster,
         }
 
 

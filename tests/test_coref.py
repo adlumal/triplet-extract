@@ -56,15 +56,28 @@ def test_unique_antecedent_resolves_inside_reported_clause(coref_extractor):
     assert embedded[0].asserter_chain == ["Everyone"]
 
 
-def test_two_persons_abstain(coref_extractor):
-    """Two distinct PERSON candidates and no model-derived gender for
-    names: ambiguous, so the pronoun is left untouched."""
-    text = "Tom met Sarah at the cafe. She ordered coffee."
+def test_two_same_gender_persons_abstain(coref_extractor):
+    """Two candidates the gender prior cannot tell apart (both female) are
+    ambiguous, so the pronoun is left untouched."""
+    text = "Sarah met Mary at the cafe. She ordered coffee."
 
     on = coref_extractor.extract_triplet_objects(text)
     assert ("She", "ordered", "coffee") in rendered(on)
     assert ("Sarah", "ordered", "coffee") not in rendered(on)
-    assert ("Tom", "ordered", "coffee") not in rendered(on)
+    assert ("Mary", "ordered", "coffee") not in rendered(on)
+
+
+def test_mixed_gender_pair_disambiguated_by_prior(coref_extractor):
+    """When the prior is active, a mixed-gender pair is NOT ambiguous: the
+    pronoun's gender selects the one agreeing candidate. Without the prior
+    this abstains (both candidates eligible)."""
+    text = "Tom met Sarah at the cafe. She ordered coffee."
+    on = coref_extractor.extract_triplet_objects(text)
+    if coref_extractor._gender_prior is not None:
+        assert ("Sarah", "ordered", "coffee") in rendered(on)
+        assert ("Tom", "ordered", "coffee") not in rendered(on)
+    else:
+        assert ("She", "ordered", "coffee") in rendered(on)
 
 
 def test_winograd_abstains(coref_extractor, plain_extractor):
@@ -93,19 +106,39 @@ def test_opt_in_resolves_simple_case(coref_extractor):
     assert "She" not in subjects(on)
 
 
-def test_known_limit_dangling_pronoun_wrong_gender(coref_extractor):
-    """KNOWN PRECISION LIMIT, asserted bidirectionally on purpose.
+def test_dangling_pronoun_gender_depends_on_prior(coref_extractor):
+    """A dangling gendered pronoun (referent absent from the text).
 
-    With no name-gender dictionary, candidate gender is usually UNKNOWN
-    and agreement-compatible with either pronoun, so a dangling gendered
-    pronoun (referent absent from the text) resolves to the single PERSON
-    in scope regardless of the name's apparent gender. This test pins the
-    CURRENT behavior; a future gender-aware mode flipping it should fail
-    here loudly and update the README's known-limit paragraph.
+    Behavior is bidirectional on the optional name-gender prior:
+    - With the `coref` extra: the prior knows "Sarah" is female, conflicts
+      with "He", and vetoes the resolution — "He" stays (the v0.4.0
+      precision limit is fixed).
+    - Without it: candidate gender is UNKNOWN, so the uniqueness gate
+      resolves "He" to the lone PERSON "Sarah" — the documented fallback.
     """
     text = "Sarah arrived early. He was annoyed about the delay."
     on = coref_extractor.extract_triplet_objects(text)
-    assert any(t.subject == "Sarah" and "annoyed" in t.relation for t in on), (
-        "dangling-pronoun misresolution no longer occurs — gender awareness "
-        "seems to have arrived; update README and this test"
+    resolved_to_sarah = any(t.subject == "Sarah" and "annoyed" in t.relation for t in on)
+    he_left_alone = any(t.subject == "He" for t in on)
+
+    if coref_extractor._gender_prior is not None:
+        assert he_left_alone and not resolved_to_sarah, "gender prior should veto He->Sarah"
+    else:
+        assert resolved_to_sarah, "lexicon-free fallback should resolve He->Sarah"
+
+
+def test_plural_anaphora_unique_antecedent(coref_extractor):
+    """ "they"/"them" resolve to a unique plural noun-phrase antecedent."""
+    text = "I love these headphones. They sound amazing."
+    on = coref_extractor.extract_triplet_objects(text)
+    assert ("these headphones", "sound", "amazing") in rendered(on)
+    assert "They" not in subjects(on)
+
+
+def test_plural_anaphora_ambiguous_abstains(coref_extractor):
+    """Two plural candidates -> abstain (no substitution)."""
+    text = "The cats chased the dogs. They ran off."
+    on = coref_extractor.extract_triplet_objects(text)
+    assert not any(
+        t.subject in ("The cats", "the dogs", "cats", "dogs") and "ran" in t.relation for t in on
     )

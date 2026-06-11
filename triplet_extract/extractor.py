@@ -204,18 +204,20 @@ class OpenIEExtractor:
         self.cluster_sources = cluster_sources
 
         # Optional embedding name-gender prior for coreference (see
-        # gender.py). Built only when coref is on and the `coref` extra is
-        # installed; otherwise the resolver stays lexicon-free (uniqueness
-        # gate only). Lazy model load: nothing is loaded until a gender
-        # decision is actually needed.
+        # gender.py). coref_gender_prior: None = auto-detect (use the model
+        # when the `coref` extra is installed), False = disable (stay
+        # lexicon-free), any object with .gender(name) = use it (e.g. a
+        # prior wrapping an already-loaded embedder). Lazy model load:
+        # nothing is loaded until a gender decision is actually needed.
         self._gender_prior = None
-        if resolve_coref and coref_gender_prior is None:
-            from .gender import NameGenderPrior
+        if resolve_coref:
+            if coref_gender_prior is None:
+                from .gender import NameGenderPrior
 
-            if NameGenderPrior.is_available():
-                self._gender_prior = NameGenderPrior()
-        else:
-            self._gender_prior = coref_gender_prior
+                if NameGenderPrior.is_available():
+                    self._gender_prior = NameGenderPrior()
+            elif coref_gender_prior is not False:
+                self._gender_prior = coref_gender_prior
 
         # Initialize LaTeX preprocessor if needed
         if self.preserve_latex:

@@ -34,12 +34,27 @@ _MODEL_NAME = "BAAI/bge-small-en"
 
 
 class NameGenderPrior:
-    """Lazily-loaded embedding gender prior with a per-name cache."""
+    """
+    Lazily-loaded embedding gender prior with a per-name cache.
 
-    def __init__(self, model_name: str = _MODEL_NAME, abstain_band: float = GENDER_ABSTAIN_BAND):
+    encoder: optional callable mapping a list of strings to a sequence of
+        L2-normalized vectors. Pass one to REUSE an already-loaded
+        embedder (e.g. a host application that already runs bge-small-en)
+        instead of loading a second copy of the model — the signal is
+        identical as long as the same model and normalization are used.
+        When None, the model named by model_name is loaded on first use.
+    """
+
+    def __init__(
+        self,
+        model_name: str = _MODEL_NAME,
+        abstain_band: float = GENDER_ABSTAIN_BAND,
+        encoder=None,
+    ):
         self._model_name = model_name
         self._abstain_band = abstain_band
-        self._model = None
+        self._encoder = encoder
+        self._encode = None  # resolved encode callable
         self._ref = None  # (she_vec, he_vec)
         self._cache: dict[str, str | None] = {}
 
@@ -50,12 +65,16 @@ class NameGenderPrior:
         return importlib.util.find_spec("sentence_transformers") is not None
 
     def _ensure_model(self):
-        if self._model is not None:
+        if self._encode is not None:
             return
-        from sentence_transformers import SentenceTransformer
+        if self._encoder is not None:
+            self._encode = self._encoder
+        else:
+            from sentence_transformers import SentenceTransformer
 
-        self._model = SentenceTransformer(self._model_name, device="cpu")
-        she, he = self._model.encode(["she", "he"], normalize_embeddings=True)
+            model = SentenceTransformer(self._model_name, device="cpu")
+            self._encode = lambda strs: model.encode(strs, normalize_embeddings=True)
+        she, he = self._encode(["she", "he"])
         self._ref = (she, he)
 
     def gender(self, name: str) -> str | None:
@@ -70,7 +89,7 @@ class NameGenderPrior:
             return self._cache[key]
 
         self._ensure_model()
-        vec = self._model.encode([key], normalize_embeddings=True)[0]
+        vec = self._encode([key])[0]
         she, he = self._ref
         delta = float(vec @ she) - float(vec @ he)
         if delta > self._abstain_band:

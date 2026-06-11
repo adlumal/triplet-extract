@@ -17,6 +17,11 @@
 #      quote attribution).
 #   6. Only then: twine upload, with explicit confirmation.
 #
+# NOTE: the PRIMARY release path is CI trusted publishing — push a
+# vX.Y.Z tag and .github/workflows/release.yml builds, verifies, and
+# publishes from that tag's tree via OIDC. This script is the local
+# pre-flight (--check) and a manual fallback.
+#
 # Usage: ./release.sh            (gate + upload prompt)
 #        ./release.sh --check    (gate only, no upload)
 set -euo pipefail
@@ -52,30 +57,9 @@ trap 'rm -rf "$SMOKE"' EXIT
 uv venv -q --python 3.11 "$SMOKE/venv"
 SM_WHEEL="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 uv pip install -q --python "$SMOKE/venv/bin/python" dist/*.whl "en-core-web-sm @ $SM_WHEEL"
+REPO_DIR=$(pwd)
 cd "$SMOKE"  # ensure the INSTALLED package is imported, not the repo tree
-"$SMOKE/venv/bin/python" - "$VERSION" <<'PY'
-import sys
-import triplet_extract
-expected = sys.argv[1]
-assert triplet_extract.__version__ == expected, (
-    f"wheel reports {triplet_extract.__version__}, expected {expected}")
-from triplet_extract import OpenIEExtractor
-ex = OpenIEExtractor()
-def texts(s):
-    return [f"{t.subject}|{t.relation}|{t.object}" for t in ex.extract_triplet_objects(s)]
-# negation polarity: no rendering may drop a parsed negation
-out = texts("Tom did not say that Sarah burned the pasta.")
-assert not any(t.startswith("Tom|did|") for t in out), f"polarity drop: {out}"
-# asserter chains: nested reported content carries its chain
-trips = ex.extract_triplet_objects("Tom said Sarah claimed the chef burned the pasta.")
-inner = [t for t in trips if t.subject == "the chef"]
-assert inner and inner[0].asserter_chain == ["Tom", "Sarah"], "chains missing"
-# quote attribution: quoted content must not be author-direct
-trips = ex.extract_triplet_objects('"Sarah ate the cake," said Tom.')
-quoted = [t for t in trips if t.subject == "Sarah" and "ate" in t.relation]
-assert quoted and quoted[0].asserter_chain == ["Tom"], "quote attribution missing"
-print("smoke probes passed:", triplet_extract.__version__)
-PY
+"$SMOKE/venv/bin/python" "$REPO_DIR/.github/workflows/smoke_probes.py" "$VERSION"
 cd - > /dev/null
 
 echo "== 6/6 upload =="

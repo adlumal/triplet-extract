@@ -321,7 +321,7 @@ In practice, core extractions remain highly compatible with Stanford OpenIE, tho
 
 ## Limitations
 
-spaCy's statistical parser may misparse bare plural sentences (plural nouns without articles). For example, `extract("Dogs chase cats.")` returns malformed results because spaCy incorrectly parses "chase" as a noun rather than a verb, treating the entire phrase as a compound noun. Adding articles fixes this: `extract("The dog chases the cat.")` works correctly. This is a fundamental limitation of spaCy's parser compared to Stanford CoreNLP's constituency parser, affecting all spaCy model sizes. This rarely impacts real-world usage since scientific and formal writing typically uses articles and determiners.
+spaCy's statistical POS tagger may mis-tag verbs that can also read as nouns when they follow a bare plural (a plural noun without an article). For example, `extract("Dogs chase cats.")` returns no triplets because spaCy tags "chase" as a noun and parses the whole sentence as a single compound noun phrase — the parse contains no verb at all, so no extraction pattern has a predicate to anchor on. Bare plurals by themselves are not the problem: `extract("Cheetahs run faster than dogs.")` parses and extracts correctly; the failure requires a noun/verb-ambiguous word like "chase". Adding articles also fixes it: `extract("The dog chases the cat.")` works correctly. This tagging behavior affects all spaCy model sizes and is a point where spaCy differs from Stanford CoreNLP, whose tagger resolves these cases correctly. It rarely impacts real-world usage since scientific and formal writing typically uses articles and determiners.
 
 ## Citation
 

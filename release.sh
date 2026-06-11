@@ -50,9 +50,8 @@ echo "== 5/6 smoke-test the built wheel (throwaway venv) =="
 SMOKE=$(mktemp -d)
 trap 'rm -rf "$SMOKE"' EXIT
 uv venv -q --python 3.11 "$SMOKE/venv"
-uv pip install -q --python "$SMOKE/venv/bin/python" dist/*.whl
-"$SMOKE/venv/bin/python" -m spacy download en_core_web_sm -q 2>/dev/null \
-  || "$SMOKE/venv/bin/python" -m spacy download en_core_web_sm
+SM_WHEEL="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+uv pip install -q --python "$SMOKE/venv/bin/python" dist/*.whl "en-core-web-sm @ $SM_WHEEL"
 cd "$SMOKE"  # ensure the INSTALLED package is imported, not the repo tree
 "$SMOKE/venv/bin/python" - "$VERSION" <<'PY'
 import sys

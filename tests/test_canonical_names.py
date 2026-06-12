@@ -105,11 +105,12 @@ def test_canonical_name_on_standalone_mention_parse():
 
 
 def test_metadata_only_rendered_strings_unchanged():
-    """Canonical computation must never alter rendered strings."""
+    """Canonical computation must never alter existing rendered strings.
+    (Appositive PROMOTION deliberately adds renderings — see
+    test_appositive_promotion.py — but the original renderings stay
+    byte-identical and the metadata never rewrites a subject in place.)"""
     triplets = extract("My friend Sarah said the food was cold.")
     rendered = {(t.subject, t.relation, t.object) for t in triplets}
     assert ("My friend Sarah", "said", "the food was cold") in rendered
-    # No rendering uses the canonical as a substitute subject string here
-    # (promotion renderings are a separate, deliberate feature)
     for t in triplets:
         assert t.to_dict()["subject"] == t.subject

@@ -173,6 +173,51 @@ class CoreNLPStyleExtractor:
                 if span:
                     triple.subject_canonical = reconstruct_text(span)
 
+        # Appositive-promotion pass: where the subject's NAME is an
+        # appositive of a nominal head ("My friend Sarah said X"),
+        # additionally emit the promoted rendering (Sarah | said | X).
+        # Entailment shortening deletes dependent subtrees, so it can drop
+        # the name and keep "My friend" but never the reverse — leaving
+        # the most identity-bearing rendering missing. A non-restrictive
+        # appositive names the same referent, so promotion is an
+        # equivalence, stronger than the forward entailments the shortener
+        # emits. Stanford's own patterns substitute an appositive for its
+        # head in OBJECT position (RelationTripleSegmenter.java
+        # VERB_PATTERNS "?>appos {}=appos"; segmentVerb takes
+        # object = m.getNode("appos")); this extends that device to
+        # subjects. Gate is purely structural: the canonical span exists
+        # and does not contain the subject head (head PROPN means the
+        # subject already IS the name — nothing to promote).
+        promoted = []
+        for triple in triples:
+            if triple.subject_canonical is None or not triple.subject_tokens:
+                continue
+            indices = {t.i for t in triple.subject_tokens}
+            head = next(
+                (t for t in triple.subject_tokens if t.head.i not in indices or t.head.i == t.i),
+                None,
+            )
+            # A PROPN head means the subject already IS the name; the
+            # canonical came from an appos/flat child only when it isn't.
+            if head is None or head.pos_ == "PROPN":
+                continue
+            span = canonical_name_tokens(triple.subject_tokens)
+            if not span:
+                continue
+            promoted.append(
+                Triple(
+                    subject=triple.subject_canonical,
+                    relation=triple.relation,
+                    object=triple.object,
+                    subject_tokens=span,
+                    relation_tokens=triple.relation_tokens,
+                    object_tokens=triple.object_tokens,
+                    relation_head=triple.relation_head,
+                    subject_canonical=triple.subject_canonical,
+                )
+            )
+        triples.extend(promoted)
+
         # Attribution pass: record the asserter chain for triples whose
         # predicate sits inside reported/attributed content. Metadata only —
         # rendered triplet strings are never affected.

@@ -282,6 +282,44 @@ Direct quoted speech is handled too: `"The food was amazing," said Tom.`
 attributes the quoted content to Tom rather than leaking it as an
 author-level fact or producing cross-boundary garbage.
 
+### Canonical Names and Appositive Promotion
+
+A subject like "My friend Sarah" names its referent in the appositive.
+Two features expose that, both gated purely structurally on the parse
+(a PROPN attached to the subject head by `appos`/`flat` — a proper noun
+elsewhere in the span, like "the senator from **Ohio**", modifies the
+referent rather than naming it and never qualifies):
+
+**`subject_canonical`** (metadata): the proper-noun span naming the
+subject's referent — `"My friend Sarah"` → `"Sarah"`, `"Her colleague
+Dr. Chen"` → `"Dr. Chen"`, compound names stay whole (`"Mary Jane
+Watson"`), `None` when the subject has no name. With
+`cluster_sources=True`, `subject_cluster_canonical` (and
+`cluster_canonical` on asserter links) carry the cluster-wide canonical —
+the shortest name span across the cluster's mentions — so a headless
+mention like "My friend" recovers "Sarah" through its cluster.
+
+**Appositive promotion** (renderings): the bare-name variant is emitted
+alongside the originals. Entailment shortening deletes dependent
+subtrees, so it can drop the name and keep "My friend" but never promote
+the name itself — leaving the most identity-bearing rendering missing. A
+non-restrictive appositive names the same referent, so promotion is an
+equivalence (Stanford's own verb patterns substitute appositives for
+their heads in object position; this extends the device to subjects):
+
+```python
+for t in extract("My friend Sarah said the food was cold."):
+    print(f"({t.subject}, {t.relation}, {t.object})")
+# (My friend Sarah, said, the food was cold)
+# (Sarah, said, the food was cold)        <- promoted
+# (My friend, said, food was cold)
+# ...
+```
+
+Promoted renderings inherit everything else unchanged — relation
+(including negation), object, confidence, and attribution metadata
+(`asserter_chain` survives promotion).
+
 ### Pronoun Resolution (Opt-In)
 
 `resolve_coref=True` substitutes third-person pronouns with their

@@ -21,7 +21,7 @@ from typing import Any
 
 import spacy
 
-from .clustering import cluster_mentions
+from .clustering import cluster_canonicals, cluster_mentions
 from .corenlp_patterns import CoreNLPStyleExtractor
 from .normalizer import normalize_quantities
 
@@ -69,6 +69,15 @@ class Triplet:
     # ("My friend Sarah" / "my friend" / "Sarah") share an id. Metadata only.
     subject_cluster: int | None = None
 
+    # The proper-noun span naming the subject's referent ("My friend
+    # Sarah" -> "Sarah"; None when the subject has no name — see
+    # clustering.canonical_name_tokens for the structural rule). When
+    # cluster_sources=True, subject_cluster_canonical is the cluster-wide
+    # canonical: the shortest name span across all of the cluster's
+    # mentions. Metadata only — rendered strings are unaffected.
+    subject_canonical: str | None = None
+    subject_cluster_canonical: str | None = None
+
     def __str__(self):
         return f"({self.subject}, {self.relation}, {self.object})"
 
@@ -86,6 +95,8 @@ class Triplet:
                 [link.to_dict() for link in self.asserter_links] if self.asserter_links else None
             ),
             "subject_cluster": self.subject_cluster,
+            "subject_canonical": self.subject_canonical,
+            "subject_cluster_canonical": self.subject_cluster_canonical,
         }
 
 
@@ -504,6 +515,7 @@ class OpenIEExtractor:
                     entailment_score=frag_info["score"],
                     asserter_chain=triple.asserter_chain,
                     asserter_links=triple.asserter_links,
+                    subject_canonical=triple.subject_canonical,
                 )
 
                 all_triplets.append(triplet)
@@ -543,10 +555,15 @@ class OpenIEExtractor:
             return
 
         clusters = cluster_mentions(mentions, self.nlp)
+        canonicals = cluster_canonicals(clusters, self.nlp)
         for t in triplets:
             t.subject_cluster = clusters.get(t.subject)
+            if t.subject_cluster is not None:
+                t.subject_cluster_canonical = canonicals.get(t.subject_cluster)
             for link in t.asserter_links or []:
                 link.cluster = clusters.get(link.asserter)
+                if link.cluster is not None:
+                    link.cluster_canonical = canonicals.get(link.cluster)
 
     def extract_triplets_as_strings(self, text: str) -> list[str]:
         """

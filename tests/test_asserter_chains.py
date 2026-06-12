@@ -189,5 +189,6 @@ def test_links_to_dict_shape():
             "speech_act": False,
             "negated": False,
             "cluster": None,
+            "cluster_canonical": None,
         }
     ]

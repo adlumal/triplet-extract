@@ -29,9 +29,103 @@ exactly the strings that appear in the output.
 Metadata only: rendered triplet strings are never changed.
 """
 
+from .openie.text_utils import reconstruct_text
+
 
 def _normalize(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def canonical_name_tokens(tokens):
+    """
+    The proper-noun span naming a mention's referent, or None.
+
+    Structural rule, no semantics: the name must be the mention's head
+    itself or attached to the head by appos/flat — a PROPN elsewhere in
+    the span ("the senator from Ohio") modifies the referent rather than
+    naming it. The span is the anchor PROPN plus its PROPN compound/flat
+    descendants, so compound names stay whole ("Mary Jane Watson",
+    "Dr. Chen").
+
+    Reference for treating the appositive as naming the same referent:
+    Stanford's verb patterns substitute an appositive for its head in
+    object position (RelationTripleSegmenter.java VERB_PATTERNS
+    "?>appos {}=appos"; segmentVerb takes object = m.getNode("appos")),
+    and appos insertion carries REVERSE_ENTAILMENT semantics
+    (NaturalLogicRelation.java:209).
+
+    Args:
+        tokens: the mention's tokens (a parse subtree, e.g. subject_tokens)
+
+    Returns:
+        List of tokens forming the name span (sorted by position), or None
+    """
+    indices = {t.i for t in tokens}
+    if not indices:
+        return None
+
+    # The head is the one token whose syntactic head lies outside the span
+    # (or is itself, for a standalone-mention ROOT). Compare by index —
+    # spaCy Tokens are per-access views, so identity comparison fails.
+    head = next((t for t in tokens if t.head.i not in indices or t.head.i == t.i), None)
+    if head is None:
+        return None
+
+    if head.pos_ == "PROPN":
+        anchor = head
+    else:
+        anchor = next(
+            (c for c in head.children if c.dep_ in ("appos", "flat") and c.pos_ == "PROPN"),
+            None,
+        )
+    if anchor is None:
+        return None
+
+    # Collect the full name: anchor plus PROPN compound/flat descendants
+    span = []
+    stack = [anchor]
+    while stack:
+        tok = stack.pop()
+        span.append(tok)
+        stack.extend(
+            c for c in tok.children if c.dep_ in ("compound", "flat") and c.pos_ == "PROPN"
+        )
+    span.sort(key=lambda t: t.i)
+    return span
+
+
+def canonical_name(tokens) -> str | None:
+    """Rendered text of canonical_name_tokens, or None."""
+    span = canonical_name_tokens(tokens)
+    return reconstruct_text(span) if span else None
+
+
+def cluster_canonicals(clusters: dict[str, int], nlp) -> dict[int, str]:
+    """
+    Pick a canonical name per cluster: the shortest proper-noun span among
+    the cluster's mentions (ties broken by first appearance). Clusters with
+    no name-bearing mention are absent from the result.
+
+    Args:
+        clusters: mention string -> cluster id (from cluster_mentions)
+        nlp: spaCy Language used to re-parse the mention strings
+
+    Returns:
+        dict mapping cluster id -> canonical name string
+    """
+    mentions = list(clusters.keys())
+    if not mentions:
+        return {}
+
+    canonicals: dict[int, str] = {}
+    for mention, doc in zip(mentions, nlp.pipe(mentions), strict=True):
+        name = canonical_name([t for t in doc if not t.is_punct])
+        if name is None:
+            continue
+        cid = clusters[mention]
+        if cid not in canonicals or len(name) < len(canonicals[cid]):
+            canonicals[cid] = name
+    return canonicals
 
 
 def _mention_keys(parsed):

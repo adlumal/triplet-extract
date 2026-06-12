@@ -37,6 +37,7 @@ class AsserterLink:
     speech_act: bool  # governing verb is one of INDIRECT_SPEECH_LEMMAS
     negated: bool  # governing verb carries a syntactic negation
     cluster: int | None = None  # source-identity cluster id (see clustering.py)
+    cluster_canonical: str | None = None  # cluster-wide canonical name, when clustered
 
     def to_dict(self) -> dict:
         return {
@@ -46,6 +47,7 @@ class AsserterLink:
             "speech_act": self.speech_act,
             "negated": self.negated,
             "cluster": self.cluster,
+            "cluster_canonical": self.cluster_canonical,
         }
 
 
@@ -74,6 +76,13 @@ class Triple:
     asserter_chain: list[str] | None = None
     asserter_links: list[AsserterLink] | None = None
 
+    # The proper-noun span naming the subject's referent ("My friend
+    # Sarah" -> "Sarah"), or None when the subject has no name. Structural
+    # only — the name must be the subject head or appos/flat-attached to
+    # it (see clustering.canonical_name_tokens). Metadata: rendered
+    # strings are unaffected.
+    subject_canonical: str | None = None
+
     def to_tuple(self) -> tuple[str, str, str]:
         return (self.subject, self.relation, self.object)
 
@@ -86,6 +95,7 @@ class Triple:
             "asserter_links": (
                 [link.to_dict() for link in self.asserter_links] if self.asserter_links else None
             ),
+            "subject_canonical": self.subject_canonical,
         }
 
 
@@ -152,6 +162,16 @@ class CoreNLPStyleExtractor:
         triples.extend(self._pattern_ccomp(doc))  # Pattern 5: ccomp
         triples.extend(self._pattern_prepositional(doc))  # Pattern 4: prepositional
         triples.extend(self._pattern_acl(doc))  # Pattern 7: ACL (participial phrases)
+
+        # Canonical-name pass: the proper-noun span naming each subject's
+        # referent ("My friend Sarah" -> "Sarah"). Metadata only.
+        from .clustering import canonical_name_tokens
+
+        for triple in triples:
+            if triple.subject_tokens:
+                span = canonical_name_tokens(triple.subject_tokens)
+                if span:
+                    triple.subject_canonical = reconstruct_text(span)
 
         # Attribution pass: record the asserter chain for triples whose
         # predicate sits inside reported/attributed content. Metadata only —
